@@ -1,0 +1,5 @@
+data/spectra/*fits
+data/isochrones/*
+*~
+*.pyc
+junk*
