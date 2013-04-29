@@ -6,16 +6,17 @@ import numpy as np
 class IMF(object):
     
     def sample(self, target_mass ):
-        masses=np.empty([])
-        mass_formed = 0.
+        masses=np.zeros([])
         #if target_mass is large, should iteratively guess at the number of stars
         while masses.sum() < target_mass:
-            ntry = np.max([(target_mass - mass_formed)/self.average_mass,1])
+            ntry = np.max([(target_mass - masses.sum())/self.average_mass,1]) #always sample at least 1 star
             masses = np.hstack([masses,self.draw_star(ntry).flatten()])
         last = np.searchsorted(np.cumsum(masses),target_mass)
-        masses = masses[:,last-1]
-        #maybe flip a coin to see if last star should be included?
-        print('IMF.sample: Drew %i stars with total mass %f M_sun' %len((masses)), masses.sum()))
+        #flip a coin to see if last star should be included so that collections of clusters are not biased low
+        if np.random.uniform() > 0.5:
+            last = last+1
+        masses = masses[:last-1]
+        print('IMF.sample: Drew %i stars with total mass %f M_sun' % (len(masses), masses.sum()) )
         return masses
 
     def draw_star(self,nstar = 1):
