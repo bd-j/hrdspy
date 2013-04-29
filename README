@@ -1,4 +1,0 @@
-hrdspy: code to generate CMDs given a population age, mass, and metallicity.
-
-the spectra of each star in the population can be generated, as well as the integrated spectrum (SSP)
-

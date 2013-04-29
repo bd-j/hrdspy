@@ -1,5 +1,5 @@
 ;goto,arrays
-fn='wlbc99_'+['p05']+'.cor'
+fn='wlbc99_'+['m25']+'.cor'
 close,1
 openr,1,fn
 
@@ -27,7 +27,7 @@ arrays:
 ;stop
 
 ;nstar=458 ;453 for BaSeL 2.2
-s={id:0,logt:0,logg:0,logl:0.,m_h:0,v_turb:0,xh:0,wave:0,f_lambda:fltarr(nw),wavelength:fltarr(nw)}
+s={id:0,logt:0.,logg:0.,logl:0.,m_h:0.,v_turb:0.,xh:0.,wave:0.,f_lambda:fltarr(nw),wavelength:fltarr(nw)}
 s=replicate(s,nstar)
 
 flux=fltarr(nw,nstar)
