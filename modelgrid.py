@@ -83,6 +83,11 @@ class ModelLibrary(object):
         return newrecarray
 
     def model_weights(self, target_points, parnames=None, itype='dt',subinds=None):
+        """Given an ndarray of target points of shape (ntarg,ndim) and optionally a
+        list of parnames of length (ndim) construct the corresponding model grid ndarry,
+        pass to weightsDT, and return the indices and weights of the model grid points
+        corresponding to linear intrpolation to the target points"""
+        
         #deal with recarray input
         if parnames is None:
             parnames = target_points.dtype.names #if the target point(s) is already a struct array use the field names
@@ -191,7 +196,7 @@ class SpecLibrary(ModelLibrary):
 	    s1, s2 = (i)*maxmod, np.min([(i+1)*maxmod-1,ngrid])
 	    spec = self.spectra_from_pars(pars[s1:s2])
             if attenuator is not None:
-                spec  = attenuator.apply(self.wavelength, spec, pars)
+                spec  = attenuator.apply_attenuation(self.wavelength, spec, pars)
 	    sed[s1:s2,:] = observate.getSED(self.wavelength,spec,filterlist)
 	    lbol[s1:s2] = observate.Lbol(self.wavelength,spec,wave_min,wave_max)
 	    i+=1

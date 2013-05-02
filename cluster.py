@@ -38,6 +38,7 @@ class Cluster(object):
         where each field of the structure is a stellar parameter."""
         
         star_masses = self.imf.sample(self.target_mass)
+        print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
         
         self.stars.pars = self.isoc.get_stellar_pars_at(star_masses, self.logage, self.Z )

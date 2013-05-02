@@ -17,7 +17,7 @@ class IMF(object):
             last = last+1
         masses = masses[:last]
         print('IMF.sample: Drew %i stars with total mass %f M_sun' % (len(masses), masses.sum()) )
-        return masses
+        return np.sort(masses)
 
     def draw_star(self,nstar = 1):
         r = np.random.uniform(0,1,nstar)

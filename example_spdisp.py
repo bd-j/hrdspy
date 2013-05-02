@@ -9,23 +9,24 @@ import cluster
 import matplotlib.pyplot as pl
 import time
 
-#choose a few filters and load them
+# choose a few filters and load them
 filternamelist = ['galex_NUV','sdss_u0','sdss_r0']
 filterlist = observate.load_filters(filternamelist)
 
-#read the isochrones and spectra first so you don't have to
-#do it for each cluster realization
+# instantiate and load the isochrones and spectra first so you
+# don't have to do it for each cluster realization
 isoc=isochrone.Padova2007()
 isoc.load_all_isoc()
 speclib = starmodel.BaSeL3()
 speclib.read_all_Z()
 
-#set cluster parameters
+# set cluster parameters
 Z = 0.0190   #solar metallicity
-mtot = 1e3   #1000 solar masses
+mtot = 5e3   #10000 solar masses
 logage = 7.5   #10 Myr
-nreal = 50   #50 realizations of the cluster
+nreal = 10   #10 realizations of the cluster
 
+# set up output
 wave = speclib.wavelength
 spectrum = np.zeros([nreal,wave.shape[0]])
 cluster_values = np.zeros([nreal, 3])
@@ -58,7 +59,7 @@ pl.xscale('log')
 pl.xlabel(r'$\lambda(\AA)$')
 pl.ylim(1e-8,1e-4)
 pl.yscale('log')
-pl.ylabel(r'erg/s/cm$^2/\AA$ at 10pc')
+pl.ylabel(r'$erg/s/cm^2/\AA$ at $10pc$')
 pl.plot(wave, spectrum.mean(axis = 0), color='black',label =r'$\langle f_\lambda\rangle$, M$_*=$%3.0e' % (mtot), linewidth=2.0  )
 
 start = time.time()
