@@ -15,7 +15,7 @@ class IMF(object):
         #flip a coin to see if last star should be included so that collections of clusters are not biased low
         if np.random.uniform() > 0.5:
             last = last+1
-        masses = masses[:last-1]
+        masses = masses[:last]
         print('IMF.sample: Drew %i stars with total mass %f M_sun' % (len(masses), masses.sum()) )
         return masses
 

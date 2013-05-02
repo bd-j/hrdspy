@@ -35,7 +35,7 @@ class ModelLibrary(object):
     def par_range(self, parname, inds=None):
         prange=[]
         for p in parname:
-            range_list = [ np.min(self.pars[inds][p]),np.max(self.pars[inds][p]) ]
+            range_list = [ np.nanmin(self.pars[inds][p]),np.nanmax(self.pars[inds][p]) ]
             prange.append(range_list)
         return prange
 
@@ -172,7 +172,7 @@ class SpecLibrary(ModelLibrary):
                      keepspec = False, intspec = False, attenuator = None):
         """output is of shape (nobj,nfilter) and (nobj) and (nobj, nwave)"""
         
-	maxmod=1e7/self.wavelength.shape[0] #don't use too much memory at once
+	maxmod = 1e7/self.wavelength.shape[0] #don't use too much memory at once
         ngrid = pars.shape[0]
 
 	sed = np.zeros([ngrid,len(filterlist)],dtype=float)
@@ -187,7 +187,7 @@ class SpecLibrary(ModelLibrary):
 	#split big model grids to avoid memory constraints
 	i=0
         while (i*maxmod <= ngrid):
-            
+            print(i)
 	    s1, s2 = (i)*maxmod, np.min([(i+1)*maxmod-1,ngrid])
 	    spec = self.spectra_from_pars(pars[s1:s2])
             if attenuator is not None:

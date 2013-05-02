@@ -10,7 +10,7 @@ import matplotlib.pyplot as pl
 import time
 
 #choose a few filters and load them
-filternamelist = ['galex_NUV','sdss_u0.par','sdss_r0']
+filternamelist = ['galex_NUV','sdss_u0','sdss_r0']
 filterlist = observate.load_filters(filternamelist)
 
 #read the isochrones and spectra first so you don't have to
@@ -23,7 +23,7 @@ speclib.read_all_Z()
 #set cluster parameters
 Z = 0.0190   #solar metallicity
 mtot = 1e3   #1000 solar masses
-logage = 7   #10 Myr
+logage = 7.5   #10 Myr
 nreal = 50   #50 realizations of the cluster
 
 wave = speclib.wavelength
@@ -56,15 +56,19 @@ print("Done %i clusters in %f seconds" %(nreal,s))
 pl.xlim(1e3,1e4)
 pl.xscale('log')
 pl.xlabel(r'$\lambda(\AA)$')
-pl.ylim(1e-8,1e-3)
+pl.ylim(1e-8,1e-4)
 pl.yscale('log')
-pl.ylabel(r'erg/s/cm$^2/AA$ at 10pc')
-pl.plot(wave, spectrum.mean(axis = 0), color='black',label =r'$\langle f_\lambda\rangle$, M$_*=$%3.0e' % (mtot), linesthick=2.0  )
+pl.ylabel(r'erg/s/cm$^2/\AA$ at 10pc')
+pl.plot(wave, spectrum.mean(axis = 0), color='black',label =r'$\langle f_\lambda\rangle$, M$_*=$%3.0e' % (mtot), linewidth=2.0  )
 
+start = time.time()
 bigcl = cluster.Cluster(mtot*nreal, logage, Z, isoc = isoc, speclib = speclib, IMF = None)
 bigcl.generate_stars()
 bigcl.observe_stars( filterlist )
-pl.plot(wave,bigcl.integrated_spectrum/nreal,color='red',label = r'f$_\lambda/%s$, M$_*=$%3.0e' % (nreal, (mtot*nreal)) )
+s = time.time() -start
+print("Done big clusters in %f seconds" %(s))
+
+pl.plot(wave,bigcl.integrated_spectrum/nreal,color='red',label = r'$f_\lambda/%s$, M$_*=$%3.0e' % (nreal, (mtot*nreal)) )
 
 pl.legend()
 pl.title(r'$\log Age = %4.2f$' % logage)

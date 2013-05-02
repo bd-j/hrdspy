@@ -57,7 +57,7 @@ class Filter(object):
 
         self.filename = os.getenv('hrdspy')+'/data/filters/'+kname+'.par'
         if type( self.filename ) == type( '' ):
-            if not os.path.isfile( self.filename ): raise ValueError( 'Filter transmission file %s does not exist!' %filename )
+            if not os.path.isfile( self.filename ): raise ValueError( 'Filter transmission file %s does not exist!' %self.filename )
             self.loadKFilter(self.filename)
 
     def loadKFilter(self,filename):
@@ -167,6 +167,7 @@ def load_filters(filternamelist):
     """Given a list of filter names, this method returns a list of Filter objects"""
     filterlist=[]
     for f in filternamelist:
+        print(f)
         filterlist.append(Filter(f))
     return filterlist
 
