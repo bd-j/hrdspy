@@ -12,6 +12,10 @@ class Padova2007(ModelLibrary):
         self.pars = None
 
     def load_all_isoc(self):
+        """Globs the contents of the isochrone directory and reads each isochrone in sequence
+        to produce a single structured array of all stellar parameters, and store those in the pars
+        attribute."""
+        
         flist = glob.glob(self.isocdir+'isoc*.dat')
         if len(flist) is 0 : raise NameError('nothing returned for ls ',isocdir,'isoc*.dat')
         self.Z_list=[]
@@ -23,7 +27,11 @@ class Padova2007(ModelLibrary):
             self.load_one_isoc(Z)
         self.Z_list=np.array(self.Z_list)
         
-    def load_one_isoc(self, Z):
+    def load_one_isoc(self, Z): 
+        """Given a metallicity (absolute, i.e. Z_sun = 0.019) read the corresponding isochrone data,
+        use it to produce a structured array of stellar parameters, and append this structured array
+        to the existing pars array"""
+        
         if type(Z) is float : Z = '%6.4f' % Z
         zval=float(Z)
         filename = glob.glob(self.isocdir+'/isoc*'+Z+'*.dat')
@@ -43,7 +51,12 @@ class Padova2007(ModelLibrary):
         self.logage_list=np.sort(np.unique(self.pars['LOGAGE']))
         
     def get_stellar_pars_at(self,initial_masses,logage,Z = 0.019,silent = False):
-        #could interpolate with Delaunay Triangulation, but using faster dumb nearest neighbor for now
+        """Given an array of initial masses, an age (in log yrs) and a metallicity, interpolate
+        the isochrone steallr parameters values to these masses, age, and metallicity.  Interpolation
+        in age and metallicity is nearest neighbor. Interpolation in mass uses peicewise linear
+        weights in log(mass)"""
+        
+        #could interpolate with Delaunay Triangulation, but using faster and safer nearest neighbor for now
         this_age = self.logage_list[self.nearest_index(self.logage_list,logage)]
         this_Z = self.Z_list[self.nearest_index(self.Z_list, Z)]
         if silent is False:
@@ -53,24 +66,17 @@ class Padova2007(ModelLibrary):
         inds = inds[0]
         
         #now interpolate in (log) mass, keeping weights
-        #print(self.isoc['MASSIN'].shape, np.unique(self.isoc['MASSIN'][inds]).shape)
-        order = self.pars['MASSIN'][inds].argsort()
-        mini = self.pars['MASSIN'][inds[order]]
-        ind_nearest = np.searchsorted( mini, initial_masses,side='left')
-        #clip dead stars above maximum mass 
-        dead = np.where(ind_nearest == mini.shape[0])[0]
-        ind_nearest = np.clip(ind_nearest,0,mini.shape[0]-1)
-        i1, i2 = inds[order[ind_nearest]], inds[order[ind_nearest-1]]
-        
-        d1 = np.log(self.pars['MASSIN'][i1]) - np.log(initial_masses)
-        d2 = np.log(self.pars['MASSIN'][i2]) - np.log(initial_masses)
-        weights1, weights2 = np.abs(d1)/np.absolute(d1-d2), np.abs(d2)/np.absolute(d1-d2)
+
+        outinds, weights = self.weights_1DLinear(np.log(self.pars['MASSIN'][inds]), np.log(initial_masses))
+        i1 = inds[outinds]
+        dead = (np.where(outinds[:,0] == outinds[:,1]))[0]
 
         #should loop this over a parameter name list with structure_array to assemble output
         parnames = self.pars.dtype.names
-        pars = np.zeros([weights1.shape[0],len(parnames)])
+        pars = np.zeros([weights.shape[0],len(parnames)])
         for i,p in enumerate(parnames):
-            pars[:,i] = (self.pars[p][i1]*weights1 + self.pars[p][i2]*weights2)
+            pars[:,i] = (self.pars[p][i1]*weights).sum(axis = 1)
+            #pars[:,i] = (self.pars[p][i1]*weights1 + self.pars[p][i2]*weights2)
             if p != 'MASSIN' : pars[dead,i] = float('nan')
                 
         stars_out = self.structure_array(pars,parnames)

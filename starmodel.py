@@ -18,7 +18,8 @@ class BaSeL3(SpecLibrary):
         self.spectra = None
 
     def read_all_Z(self):
-        """Read the spectral libraries for all avaliable metallicities"""
+        """Read the spectral libraries (as fits binary tables) for all avaliable metallicities,
+        store in a SpecLibrary object."""
         flist = glob.glob(self.specdir+'wlbc*.fits')
         if len(flist) == 0 : raise NameError('nothing returned for ls ',self.specdir,'wlbc*.fits')
             
@@ -28,12 +29,13 @@ class BaSeL3(SpecLibrary):
             Z=f.split('_')[1]
             self.Z_legend.append(Z)
             self.Z_list.append( (10** (float( Z.replace('m','-').replace('p','') )) ) * 0.0190) #convert to an absolute metallicity
-            print(self.Z_legend[i])
             self.read_one_Z(self.Z_legend[i])
         self.Z_list=np.array(self.Z_list)
 
     def read_one_Z(self,inZ):
-        """Read the spectral library from a fits file for only one metallicity"""
+        """Read the spectral library from a binary fits file for only one metallicity, specifie as
+        either a float of absolute metallicity (0.019 = Z_sun) or as the BaSeL metallicity descriptor,
+        e.g m10 for log(Z/Z_sun) = -1"""
         if type(inZ) is float :
             Zname = 'p%02.0f' % (np.log10(inZ/0.0190)*10)
             if inZ < 0:
@@ -46,10 +48,8 @@ class BaSeL3(SpecLibrary):
         
         filename = glob.glob(self.specdir+'wlbc99_'+Zname+'_cor.fits')
         parnames=['LOGL','LOGG','LOGT','M_H','V_TURB','XH','ID']
-        print(filename)
-        
+                
         wave, spec, pars = self.read_model_from_fitsbinary(filename[0], parnames, wavename = 'WAVELENGTH')
-        print(pars.shape[0])
         zz=np.zeros(pars.shape[0],dtype= np.dtype([('Z','<f8')]))
         zz['Z'] = inZ
         pars=self.join_struct_arrays([pars,zz])
@@ -58,11 +58,9 @@ class BaSeL3(SpecLibrary):
             self.wavelength = wave
             self.spectra = spec
         else:
-            print(self.spectra.shape,spec.shape)
             self.pars = np.hstack([self.pars, pars])
             self.spectra = np.vstack([self.spectra, spec])
-            print(self.spectra.shape)
-            
+                        
     def spectra_from_pars(self, parstruct):
         return self.generate_spectrum(parstruct['LOGL'],parstruct['LOGT'],parstruct['LOGG'],parstruct['Z'])
 

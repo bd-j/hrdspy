@@ -55,7 +55,7 @@ class Filter(object):
         else:
             self.nick=nick
 
-        self.filename = os.getenv('pyxydust')+'/data/filters/'+kname+'.par'
+        self.filename = os.getenv('hrdspy')+'/data/filters/'+kname+'.par'
         if type( self.filename ) == type( '' ):
             if not os.path.isfile( self.filename ): raise ValueError( 'Filter transmission file %s does not exist!' %filename )
             self.loadKFilter(self.filename)
@@ -180,10 +180,13 @@ def getSED(sourcewave,sourceflux,filterlist):
     sed = np.zeros(sedshape)
     for i,f in enumerate(filterlist):
         sed[:,i]=f.ABMag(sourcewave,sourceflux)
-
-
-
     return np.squeeze(sed)
+
+def filter_dict(filterlist):
+    fdict = {}
+    for i,f in enumerate(filterlist):
+        fdict[f.nick] = i
+    return fdict
 
 ###Routines for spectra######
 
@@ -191,7 +194,6 @@ def Lbol(wave,spec,wave_min=90,wave_max = 1e6):
     """assumes wavelength varies along last axis of spec"""
     inds=np.where(np.logical_and(wave < wave_max, wave >= wave_min))
     return np.trapz(spec[...,inds[0]],wave[inds])
-
 
 
 def air2vac(wave):

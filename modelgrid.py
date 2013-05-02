@@ -26,6 +26,7 @@ class ModelLibrary(object):
         self.ngrid = self.pars.shape[0]
 
     def add_par(self,value,name, dtype='<f8'):
+        self.pars = self.join_struct_arrays( [self.pars, self.structure_array(value, name, dtype = dtype)] )
         pass
 
     def par_names(self):
@@ -124,14 +125,33 @@ class ModelLibrary(object):
         last = 1-bary.sum(axis=-1) #the last bary coordinate is 1-sum of the other coordinates
         weights = np.hstack((bary,last[:,np.newaxis]))
 
-        #loop implementation of the above
+        #loop implementation of the above for clarity
         #npts = triangle_inds.shape[0]
         #bary = np.zeros([npts,ndim+1])
         #for i in xrange(npts):
         #    bary[i,:-1]= np.dot( dtri.transform[triangle_inds[0],:ndim,:ndim],
         #                       (target_points-dtri.transform[triangle_inds[i],ndim,:])
             
-        return inds, weights 
+        return inds, weights
+
+    def weights_1DLinear(self, model_points, target_points):
+        order = model_points.argsort()
+        mod_sorted = model_points[order]
+        ind_nearest = np.searchsorted(mod_sorted, target_points,side='left')
+
+        maxind = mod_sorted.shape[0]-1
+        edge = np.logical_or( ind_nearest == 0, ind_nearest == (maxind+1) )
+        inds = (np.vstack([order[np.clip(ind_nearest, 0, maxind)], order[np.clip(ind_nearest-1, 0,maxind)]])).T
+
+        d1 = np.absolute( model_points[inds[:,0]] - target_points )
+        d2 = np.absolute( model_points[inds[:,1]] - target_points )
+        width = d1+d2
+        width[edge] = 1
+        weights = np.vstack([1-d1/width, 1-d2/width]).T
+        weights[edge,:]=0.5
+
+        return inds, weights
+
 
     def nearest_index(self, array, value):
         return (np.abs(array-value)).argmin(axis = -1)
@@ -148,17 +168,22 @@ class SpecLibrary(ModelLibrary):
     def __init__(self):
         pass
 
-    def generateSEDs(self, pars, filterlist, wave_min = 90, wave_max = 1e7, keepspec = False, attenuator = None):
+    def generateSEDs(self, pars, filterlist, wave_min = 90, wave_max = 1e7,
+                     keepspec = False, intspec = False, attenuator = None):
         """output is of shape (nobj,nfilter) and (nobj) and (nobj, nwave)"""
+        
 	maxmod=1e7/self.wavelength.shape[0] #don't use too much memory at once
         ngrid = pars.shape[0]
 
 	sed = np.zeros([ngrid,len(filterlist)],dtype=float)
 	lbol = np.zeros(ngrid,dtype=float)
         if keepspec:
-            spectra = np.zeros([ngrid,self.wavelength.shape[0]])
+            outspectra = np.zeros([ngrid,self.wavelength.shape[0]])
+        elif intspec:
+            outspectra = np.zeros(self.wavelength.shape[0])
         else:
-            spectra = np.array(-1)
+            outspectra = np.array(-1)
+            
 	#split big model grids to avoid memory constraints
 	i=0
         while (i*maxmod <= ngrid):
@@ -170,9 +195,12 @@ class SpecLibrary(ModelLibrary):
 	    sed[s1:s2,:] = observate.getSED(self.wavelength,spec,filterlist)
 	    lbol[s1:s2] = observate.Lbol(self.wavelength,spec,wave_min,wave_max)
 	    i+=1
-            if keepspec : spectra[s1:s2,:]=spec
-
-        return sed, lbol, spectra
+            if keepspec is True:
+                outspectra[s1:s2,:] = spec
+            elif intspec is True:
+                outspectra+=spec.sum(axis = 0)
+                
+        return sed, lbol, outspectra
 
 
     def interpolate_to_pars(self, target_points, parnames=None, itype='dt',subinds=None ):
@@ -208,7 +236,6 @@ class SpecLibrary(ModelLibrary):
 
 
     def read_model_from_fitsbinary(self, filename,parnames,wavename = 'WAVE',fluxname = 'F_LAMBDA'):
-        print(filename)
         #if os.ispath(filename) is False: raise IOError('read_model_from_fitsbinary: ',filename,' does not exist')
         fits = pyfits.open( filename )
         #parse the FITS recarray and assign ModelGrid parameter, spectra, and wavelength attributes
