@@ -5,17 +5,27 @@ import numpy as np
 
 class IMF(object):
     
-    def sample(self, target_mass ):
+    def sample(self, target_mass, sorted_sampling = False ):
+        """Sample the IMF until the target mass is exceeded. If the last star drawn
+        causes the total mass to be further from the target mass then it is discarded.
+        If sorted_sampling == True then the same criteria is applied to the most
+        massive star rather than the last one drawn. """
+        
         masses=np.zeros([])
         #if target_mass is large, should iteratively guess at the number of stars
         while masses.sum() < target_mass:
             ntry = np.max([(target_mass - masses.sum())/self.average_mass,1]) #always sample at least 1 star
             masses = np.hstack([masses,self.draw_star(ntry).flatten()])
-        last = np.searchsorted(np.cumsum(masses),target_mass)
+        last = np.searchsorted(np.cumsum(masses),target_mass)+1
         #flip a coin to see if last star should be included so that collections of clusters are not biased low
-        if np.random.uniform() > 0.5:
-            last = last+1
+        #if np.random.uniform() > 0.5:
+        #    last = last+1
+        #masses = masses[:last]
         masses = masses[:last]
+        if sorted_sampling : masses.sort()
+        if (target_mass - masses[:-1].sum()) << (masses.sum() - target_mass):
+            masses = masses[:-1]
+        
         print('IMF.sample: Drew %i stars with total mass %f M_sun' % (len(masses), masses.sum()) )
         return np.sort(masses)
 
