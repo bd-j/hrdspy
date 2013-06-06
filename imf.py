@@ -23,7 +23,7 @@ class IMF(object):
         #masses = masses[:last]
         masses = masses[:last]
         if sorted_sampling : masses.sort()
-        if (target_mass - masses[:-1].sum()) << (masses.sum() - target_mass):
+        if (target_mass - masses[:-1].sum()) < (masses.sum() - target_mass):
             masses = masses[:-1]
         
         print('IMF.sample: Drew %i stars with total mass %f M_sun' % (len(masses), masses.sum()) )

@@ -33,7 +33,7 @@ class BaSeL3(SpecLibrary):
         self.Z_list=np.array(self.Z_list)
 
     def read_one_Z(self,inZ):
-        """Read the spectral library from a binary fits file for only one metallicity, specifie as
+        """Read the spectral library from a binary fits file for only one metallicity, specified as
         either a float of absolute metallicity (0.019 = Z_sun) or as the BaSeL metallicity descriptor,
         e.g m10 for log(Z/Z_sun) = -1"""
         if type(inZ) is float :
