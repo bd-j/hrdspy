@@ -1,6 +1,7 @@
 import numpy as np
 import pyfits
 from StringIO import StringIO
+import re
 import observate
 
 #####
@@ -91,3 +92,5 @@ def load_image_cube(rp):
         #    data_mag[...,i] = galex[fname]
         #    data_magerr[...,i] = galex[fname+'_unc']
     return data_mag, data_magerr, mcps[['RAh','Dec','flag']]
+
+

@@ -10,6 +10,7 @@ import starmodel
 import isochrone
 import utils
 
+
 class Starfitter(object):
 
     doresid = False
@@ -55,7 +56,6 @@ class Starfitter(object):
 
     def fit_image(self):
         """Fit every 'pixel' in an image."""
-        
         if hasattr(self,'max_lnprob') is False:
             self.setup_output()
         start = time.time()
@@ -65,8 +65,8 @@ class Starfitter(object):
         duration =  time.time()-start
         print('Done all pixels in {0:.1f} seconds'.format(duration) )
 
-    def write_output(self):
-        """Write stored fit information to FITS files."""
+    def write_output_images(self):
+        """Write stored fit information to FITS images."""
         header = self.rp['data_header']
 
         outfile= '{outname}_CHIBEST.fits'.format(**self.rp)
@@ -86,30 +86,6 @@ class Starfitter(object):
 
 class StarfitterGrid(Starfitter):
 
-    def initialize_grid(self, params = None):
-        """Draw grid parameters from prior distributions and build the grid."""
-
-        if params is not None:
-            self.params = params
-        
-        parnames = self.params.keys()
-        theta = np.zeros([self.rp['ngrid'],len(parnames)])
-        for j, parn in enumerate(parnames) :
-            theta[:,j] = np.random.uniform(self.params[parn]['min'],self.params[parn]['max'],self.rp['ngrid'])
-            if self.params[parn]['type'] == 'log':
-                theta[:,j]=10**theta[:,j] #deal with uniform log priors   
-        self.stargrid.set_pars(theta, parnames)
-        
-    def build_grid(self, attenuator = None):
-        start = time.time()
-        self.stargrid.sed, self.stargrid.lbol, tmp = self.basel.generateSEDs(self.stargrid.pars,self.filterlist,
-                                                                             attenuator = attenuator,
-                                                                             wave_min=self.rp['wave_min'],
-                                                                             wave_max=self.rp['wave_max'])        
-
-        duration=time.time()-start
-        print('Model Grid built in {0:.1f} seconds'.format(duration))
-
     def fit_pixel(self, ix, iy, store = True, show_cdf = False):
         """Determine \chi^2 of every model for a given pixel, and store moments
         of the CDF for each parameter as well as the bestfitting model parameters.
@@ -124,7 +100,7 @@ class StarfitterGrid(Starfitter):
         ind_max=np.argmax(lnprob_isnum)
         
         # this should all go to a storage method
-        # also, one probably wants p(<val) at specific values, not val at specific p(<val)
+        # also, sometims one probably wants p(<val) at specific values, not val at specific p(<val)
         self.max_lnprob[iy,ix] = np.max(lnprob_isnum)
         self.delta_best[iy,ix,:] = delta_mag[ind_isnum[ind_max],:]
         for i, parn in enumerate(self.outparnames):
@@ -135,6 +111,61 @@ class StarfitterGrid(Starfitter):
             self.parval[parn][iy,ix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 # should linear interpolate instead of average.
             self.parval[parn][iy,ix,-1] = par[ind_max]        
 
+
+    def build_grid(self, attenuator = None):
+        """Build the SED fitting grid using the intialized parameters."""
+        start = time.time()
+        self.stargrid.sed, self.stargrid.lbol, tmp = self.basel.generateSEDs(self.stargrid.pars,self.filterlist,
+                                                                             attenuator = attenuator,
+                                                                             wave_min=self.rp['wave_min'],
+                                                                             wave_max=self.rp['wave_max'])        
+        self.stargrid.wavelength = self.basel.wavelength
+        duration=time.time()-start
+        print('Model Grid built in {0:.1f} seconds'.format(duration))
+
+
+    def write_catalog(self, outparlist = None):
+        """Write fit results to a FITS binary table.  Too highly specialized"""
+        if outparlist is None: outparlist = self.rp['outparnames']
+        dm = 5.0*np.log10(self.rp['dist']) + 25
+
+        #input magnitudes
+        m = self.basel.structure_array(self.data_mag[0,:,:]+dm,
+                                       self.rp['fnamelist'])
+        #input magnitude errors
+        me = self.basel.structure_array(self.data_magerr[0,:,:],
+                                         ['{0}_unc'.format(f) for f in self.rp['fnamelist']])
+        #best-fit chi^2
+        cb = self.basel.structure_array(self.max_lnprob[0,:]*(-2),
+                                         'chibest')
+        #paramater percentiles 
+        pst = []
+        for i, par in enumerate(outparlist):
+            print(par, self.parval[par][0,:,0:3].shape)
+            print(['{0}_p{1:5.3f}'.format(par.replace('galex_',''), pt) for pt in self.rp['percentiles']])
+            pst +=  [self.basel.structure_array(self.parval[par][0,:,0:3],
+                                            ['{0}_p{1:03.0f}'.format(par.replace('galex_',''), pt*1000) for pt in self.rp['percentiles']])]
+
+        #put everything together (including ra, dec, and flags) and write it out
+        cat = self.basel.join_struct_arrays( [self.rp['data_header'], m, me, cb] + pst )
+        cols = pyfits.ColDefs(cat)
+        tbhdu = pyfits.new_table(cols)
+        tbhdu.writeto('{0}_starprops.fits'.format(self.rp['outname']), clobber = True)
+
+
+    def initialize_grid(self, params = None):
+        """Draw grid parameters from prior distributions and build the grid."""
+        if params is not None:
+            self.params = params
+        parnames = self.params.keys()
+        theta = np.zeros([self.rp['ngrid'],len(parnames)])
+        for j, parn in enumerate(parnames) :
+            theta[:,j] = np.random.uniform(self.params[parn]['min'],self.params[parn]['max'],self.rp['ngrid'])
+            if self.params[parn]['type'] == 'log':
+                theta[:,j]=10**theta[:,j] #deal with uniform log priors   
+        self.stargrid.set_pars(theta, parnames)
+
+
     def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.69):
         """Draw model grid parameters from isochrones. This effectively uses the
         isochrone grid points as priors on the stellar properties."""
@@ -143,11 +174,9 @@ class StarfitterGrid(Starfitter):
             isoc.load_all_isoc()
         else:
             isoc.load_isoc(Z)
-
         good = ((isoc.pars['PHASE'] != 6) & #remove post-AGB
                 (isoc.pars['LOGT'] < logt_max) & #remove stars hotter than exist in library
                 (isoc.pars['LOGL'] > logl_min))   #remove faint undetectable things (log solar luminosities)
-            
         isoc.pars = isoc.pars[good]
 
         #The draw should actually include mass weighting and completeness, but for now...
@@ -158,14 +187,13 @@ class StarfitterGrid(Starfitter):
                                              3.5, 4.69) #clip again for the stellar library
         self.stargrid.pars['LOGG'] = isoc.pars['LOGG'][draw]
         #mass goes along for the ride.  Should actually come from interpolation of L and T
-        self.stargrid.add_par(np.log10(isoc.pars['MASSINI'][draw]), 'LOGM') 
+        #but this effectively includes some uncertainty in the isochrones
+        self.stargrid.add_par(np.log10(isoc.pars['MASSIN'][draw]), 'LOGM') 
+
 
     def set_default_params(self):
         """Set the default model parameter properties."""
-        
-        #should be list of dicts or dict of lists?  no, dict of dicts!
         self.params = {}
-
         self.params['LOGT'] = {'min': 3.5, 'max':4.8, 'type':'linear'}
         self.params['LOGG'] = {'min': -1, 'max':5.6, 'type':'linear'}
         self.params['LOGL'] = {'min': 3.3, 'max':4.8, 'type':'linear'}
@@ -175,15 +203,15 @@ class StarfitterGrid(Starfitter):
         self.params['F_BUMP'] = {'min':0.1, 'max':1.1, 'type':'linear'}
 
 
+
+
 class StarfitterMCMC(Starfitter):
     """Use emcee to do MCMC sampling of the parameter space for a given pixel.  Wildly unfinished/untested"""
 
     def set_default_params(self, large_number = 1e15):
         """Set the default model parameter ranges."""
         #should be list of dicts or dict of lists?  no, dict of dicts!
-        qpahmax = self.dl07.par_range(['QPAH'], inds = [self.dl07.delta_inds])[0][1]
         self.params = {}
-        self.params['UMIN'] = {'min': np.log10(0.1), 'max':np.log10(25), 'type':'log'}
 
     def fit_pixel(self, ix, iy):
         obs, err  = self.data_mag[ix,iy,:], self.data_magerr[ix,iy,:]
