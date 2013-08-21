@@ -63,12 +63,15 @@ fitter.write_catalog(outparlist = ['galex_NUV', 'LOGT','LOGL', 'A_V'])
 gf = {'goodfit':(fitter.rp['data_header']['flag'] == 10) & (fitter.data_mag[0,:,2] +18.5 < 20.0),'glabel': 'V<20 & flag==10'}
 
 plotter.plot_precision(fitter, PAR = 'LOGT', **gf)
+pl.savefig('logt_unc.png')
+
 plotter.plot_precision(fitter, PAR = 'A_V', **gf)
-plotter.plot_precision(fitter, PAR = 'A_V', **gf,
-                                versus = fitter.parval['LOGT'][0,:,1])
+plotter.plot_precision(fitter, PAR = 'A_V',versus = fitter.parval['LOGT'][0,:,1], **gf)
 plotter.plot_precision(fitter, PAR = 'galex_NUV', **gf)
 
 plotter.plot_pars(fitter, PAR1 = 'LOGT', PAR2 = 'LOGL', **gf)
+pl.savefig('logl_logt.png')
+
 plotter.plot_pars(fitter, PAR1 = 'LOGT', PAR2 = 'A_V', **gf)
 
 plotter.residuals(fitter, bands = [0, 1, 2, 3], colors  = ['m','b','g','r'], **gf)

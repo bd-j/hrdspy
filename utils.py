@@ -62,8 +62,8 @@ def read_some_mcps(catalog_name = 'table1.dat', lines = None, nlines = 100, fsiz
                    'flag'),
           'formats':('<f8','<f8','<f8','<f8','<f8','<f8','<f8','<f8','<f8','<f8','<i4')}
     if lines is None:
-        print('randomly choosing lines')
-        lines = np.random.uniform(0, fsize, nlines).astype(int)
+        print('randomly choosing {0} lines'.format(nlines))
+        lines = np.sort(np.random.uniform(0, fsize, nlines).astype(int))
     
     f = open(catalog_name, 'r')
     somelines = ''
