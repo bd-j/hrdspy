@@ -38,7 +38,8 @@ class Starfitter(object):
         
         gg = np.where((self.data_mag != 0) & np.isfinite(self.data_mag),1,0)
         self.goodpix = np.where(gg.sum(axis = 2) == len(self.rp['fnamelist'])) #restrict to detections in all bands
-
+        
+            
     def setup_output(self):
         """Create arrays to store fit output for each pixel."""
         self.max_lnprob = np.zeros([self.nx,self.ny])+float('NaN')
@@ -96,6 +97,9 @@ class StarfitterGrid(Starfitter):
     
         lnprob , delta_mag = utils.lnprob_grid(self.stargrid, obs, err, mask)
         ind_isnum = np.where(np.isfinite(lnprob))[0]
+        if ind_isnum.shape[0] == 0:
+            print(ix,iy)
+            return
         lnprob_isnum = lnprob[ind_isnum]
         ind_max=np.argmax(lnprob_isnum)
         
@@ -137,7 +141,7 @@ class StarfitterGrid(Starfitter):
                                          ['{0}_unc'.format(f) for f in self.rp['fnamelist']])
         #best-fit chi^2
         cb = self.basel.structure_array(self.max_lnprob[0,:]*(-2),
-                                         'chibest')
+                                         ['chibest'])
         #paramater percentiles 
         pst = []
         for i, par in enumerate(outparlist):

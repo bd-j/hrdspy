@@ -45,7 +45,7 @@ fitter.build_grid(attenuator = dust)
 ## running fitter.fit_image()
 pred_fnamelist = ['galex_NUV', 'galex_FUV']
 pred_filt = observate.load_filters(pred_fnamelist)
-prediction_sed, tmp1, tmp2 = fitter.basel.generateSEDs(fitter.stargrid.pars,pred_filt,attenuator = dust, wave_min = 92, wave_max = 1e7)
+prediction_sed, tmp1, tmp2 = fitter.basel.generateSEDs(fitter.stargrid.pars, pred_filt,attenuator = dust, wave_min = 92, wave_max = 1e7)
 #for i in xrange(len(pred_filt)-1) :
 fitter.stargrid.add_par(prediction_sed[:,0] + 5.0*np.log10(rp['dist'])+25,pred_filt[0].name)
 fitter.rp['outparnames']+= [pred_filt[0].name]
