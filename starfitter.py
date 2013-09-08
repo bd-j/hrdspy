@@ -3,12 +3,13 @@
 
 import os, time
 import numpy as np
-import pyfits
+import astropy.io.fits as pyfits
 
 import observate
 import starmodel
 import isochrone
 import utils
+import catio
 
 
 class Starfitter(object):
@@ -31,7 +32,7 @@ class Starfitter(object):
     def load_data(self):
         """Read the catalogs, apply distance modulus,
         and determine 'good' pixels"""
-        self.data_mag, self.data_magerr, self.rp['data_header'] = utils.load_image_cube(self.rp)
+        self.data_mag, self.data_magerr, self.rp['data_header'] = catio.load_image_cube(self.rp)
         dm = 5.0*np.log10(self.rp['dist'])+25
         self.data_mag = np.where(self.data_mag > 10.0, self.data_mag-dm, float('NaN'))
         self.nx, self.ny = self.data_mag.shape[0], self.data_mag.shape[1]
@@ -66,24 +67,6 @@ class Starfitter(object):
         duration =  time.time()-start
         print('Done all pixels in {0:.1f} seconds'.format(duration) )
 
-    def write_output_images(self):
-        """Write stored fit information to FITS images."""
-        header = self.rp['data_header']
-
-        outfile= '{outname}_CHIBEST.fits'.format(**self.rp)
-        pyfits.writeto(outfile,self.max_lnprob*(-2),header=header,clobber=True)
-
-        for i, parn in enumerate(self.outparnames):
-            #    header.set('BUNIT',unit[i])
-            outfile= '{0}_{1}_bestfit.fits'.format(self.rp['outname'],parn)
-            pyfits.writeto(outfile,self.parval[parn][:,:,-1],header=header,clobber=True)
-            for j, percent in enumerate(self.rp['percentiles']):
-                outfile= '{0}_{1}_p{2:5.3f}.fits'.format(self.rp['outname'],parn,percent) 
-                pyfits.writeto(outfile,self.parval[parn][:,:,j],header=header,clobber=True)
-        if self.doresid:
-            for i, fname in enumerate(self.rp['fnamelist']):
-                outfile = '{0}_{1}.fits'.format(self.rp['outname'], fname)
-                pyfits.writeto(outfile,self.delta_best[:,:,i],header = header, clobber = True)
 
 class StarfitterGrid(Starfitter):
 
@@ -148,9 +131,10 @@ class StarfitterGrid(Starfitter):
             print(par, self.parval[par][0,:,0:3].shape)
             print(['{0}_p{1:5.3f}'.format(par.replace('galex_',''), pt) for pt in self.rp['percentiles']])
             pst +=  [self.basel.structure_array(self.parval[par][0,:,0:3],
-                                            ['{0}_p{1:03.0f}'.format(par.replace('galex_',''), pt*1000) for pt in self.rp['percentiles']])]
+                                            ['{0}_p{1:03.0f}'.format(par.replace('galex_',''), pt*1000)
+                                             for pt in self.rp['percentiles']])]
 
-        #put everything together (including ra, dec, and flags) and write it out
+        #put everything together (including ra, dec, and other header info) and write it out
         cat = self.basel.join_struct_arrays( [self.rp['data_header'], m, me, cb] + pst )
         cols = pyfits.ColDefs(cat)
         tbhdu = pyfits.new_table(cols)
@@ -170,7 +154,7 @@ class StarfitterGrid(Starfitter):
         self.stargrid.set_pars(theta, parnames)
 
 
-    def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.69):
+    def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.59, logt_min =3.5):
         """Draw model grid parameters from isochrones. This effectively uses the
         isochrone grid points as priors on the stellar properties."""
         isoc = isochrone.Padova2007()
@@ -180,16 +164,20 @@ class StarfitterGrid(Starfitter):
             isoc.load_isoc(Z)
         good = ((isoc.pars['PHASE'] != 6) & #remove post-AGB
                 (isoc.pars['LOGT'] < logt_max) & #remove stars hotter than exist in library
-                (isoc.pars['LOGL'] > logl_min))   #remove faint undetectable things (log solar luminosities)
+                (isoc.pars['LOGL'] > logl_min) &   #remove faint undetectable things (log solar luminosities)
+                (isoc.pars['LOGT'] > logt_min) ) #remove very cool things
         isoc.pars = isoc.pars[good]
 
         #The draw should actually include mass weighting and completeness, but for now...
-        draw = (np.random.uniform(0, isoc.pars.shape[0], self.rp['ngrid'])).astype(int)
+        #indeed, there should be a way to attach a prior probablity based on mass and completeness
+        #or selection within a color/magnitude bin
+        draw = (np.random.uniform(0, isoc.pars.shape[0]-1, self.rp['ngrid'])).astype(int)
         self.stargrid.pars['LOGL'] = isoc.pars['LOGL'][draw]+np.random.normal(0, 0.15, self.rp['ngrid'])
         self.stargrid.pars['LOGT'] = np.clip(isoc.pars['LOGT'][draw]+
-                                             np.random.normal(0, 0.1, self.rp['ngrid']),
-                                             3.5, 4.69) #clip again for the stellar library
-        self.stargrid.pars['LOGG'] = isoc.pars['LOGG'][draw]
+                                             np.random.normal(0, 0.05, self.rp['ngrid']),
+                                             logt_min, logt_max) #clip again for the stellar library
+        self.stargrid.pars['LOGG'] = np.clip(isoc.pars['LOGG'][draw] + 1.05, -0.5, 4.8) #HACK. added one to better fit the basel library
+        
         #mass goes along for the ride.  Should actually come from interpolation of L and T
         #but this effectively includes some uncertainty in the isochrones
         self.stargrid.add_par(np.log10(isoc.pars['MASSIN'][draw]), 'LOGM') 
