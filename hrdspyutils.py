@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import radians, degrees, sin, cos, arctan2, hypot, tan
+from numpy import squeeze, argsort, log10, radians, degrees, sin, cos, arctan2, hypot, tan
 
 
 #######
@@ -24,11 +24,20 @@ def lnprob_grid(grid, obs, err, mask):
     #delta_mag = 0-2.5*np.log10((lstar*mod_maggies.T).T/obs_maggies)
 
     chi2 = (( mod_maggies - obs_maggies)**2)*obs_ivar
-    lnprob = np.squeeze(-0.5*chi2.sum(axis=-1))
-    delta_mag = 0-2.5*np.log10(mod_maggies/obs_maggies)
+    lnprob = squeeze(-0.5*chi2.sum(axis=-1))
+    delta_mag = 0 - 2.5*log10(mod_maggies/obs_maggies)
     #clean NaNs
     
     return lnprob, delta_mag
+
+def sortgrid(pars, sortlist = None):
+    if sortlist is None:
+        sortlist = pars.dtype.names
+    parorder = {}
+    for p in sortlist:
+        parorder[p] = argsort(pars[p])
+    return parorder
+
 
 #not working yet....
 def cdf_moment(par,lnprob,percentiles,save=False,plot=False):

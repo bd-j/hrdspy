@@ -11,6 +11,8 @@ import isochrone
 import hrdspyutils as utils
 import catio
 
+from numpy import isfinite, exp, squeeze, cumsum
+from hrdspyutils import lnprob_grid
 
 class Starfitter(object):
 
@@ -54,6 +56,8 @@ class Starfitter(object):
             self.doresid = False
         if self.doresid is True:
             self.delta_best = np.zeros([self.nx,self.ny,len(self.filterlist)])+float('NaN')
+        self.stargrid.parorder = utils.sortgrid(self.stargrid.pars,
+                                            sortlist = self.outparnames)
 
     def fit_image(self):
         """Fit every 'pixel' in an image."""
@@ -81,23 +85,24 @@ class StarfitterGrid(Starfitter):
 
         self.store_percentiles(iy, ix, lnprob, delta_mag)
         
-    def store_percentiles(self, iy, ix, lnprob, delta_mag):
+    def store_percentiles(self, iy, ix, lnprob, delta_mag, tiny_lnprob = -1e30):
         """Store percentiles of the marginalized pdf.
         The sorting of each parameter in stargrid should be done
-        prior to this function = this is a time sink when the grid is large"""
-        ind_isnum = np.where(np.isfinite(lnprob))[0]
+        prior to this function, since this is a time sink when the grid is large"""
+
+        ind_isnum = np.where(isfinite(lnprob))[0]
         if ind_isnum.shape[0] == 0:
             print(ix,iy)
             return
-        lnprob_isnum = lnprob[ind_isnum]
-        ind_max = np.argmax(lnprob_isnum)
-        
-        self.max_lnprob[iy,ix] = np.max(lnprob_isnum)
-        self.delta_best[iy,ix,:] = delta_mag[ind_isnum[ind_max],:]
+        lnprob[~isfinite(lnprob)] = tiny_lnprob
+        ind_max = np.argmax(lnprob)
+        self.max_lnprob[iy,ix] = lnprob.max()
+        self.delta_best[iy,ix,:] = delta_mag[ind_max,:]
+
         for i, parn in enumerate(self.outparnames):
-            par = np.squeeze(self.stargrid.pars[parn])[ind_isnum]
-            order = np.argsort(par)
-            cdf = np.cumsum(np.exp(lnprob_isnum[order])) / np.sum(np.exp(lnprob_isnum))
+            par = squeeze(self.stargrid.pars[parn])
+            order = self.stargrid.parorder[parn]
+            cdf = cumsum(exp(lnprob[order])) / np.sum(exp(lnprob))
             ind_ptiles= np.searchsorted(cdf,self.rp['percentiles'])
             # should linear interpolate instead of average.
             self.parval[parn][iy,ix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 
