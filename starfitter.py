@@ -8,7 +8,7 @@ import astropy.io.fits as pyfits
 import observate
 import starmodel
 import isochrone
-import utils
+import hrdspyutils as utils
 import catio
 
 
@@ -39,8 +39,7 @@ class Starfitter(object):
         
         gg = np.where((self.data_mag != 0) & np.isfinite(self.data_mag),1,0)
         self.goodpix = np.where(gg.sum(axis = 2) == len(self.rp['fnamelist'])) #restrict to detections in all bands
-        
-            
+                    
     def setup_output(self):
         """Create arrays to store fit output for each pixel."""
         self.max_lnprob = np.zeros([self.nx,self.ny])+float('NaN')
@@ -79,26 +78,40 @@ class StarfitterGrid(Starfitter):
         mask = np.where((obs != 0) & np.isfinite(obs), 1, 0)
     
         lnprob , delta_mag = utils.lnprob_grid(self.stargrid, obs, err, mask)
+
+        self.store_percentiles(iy, ix, lnprob, delta_mag)
+        
+    def store_percentiles(self, iy, ix, lnprob, delta_mag):
+        """Store percentiles of the marginalized pdf.
+        The sorting of each parameter in stargrid should be done
+        prior to this function = this is a time sink when the grid is large"""
         ind_isnum = np.where(np.isfinite(lnprob))[0]
         if ind_isnum.shape[0] == 0:
             print(ix,iy)
             return
         lnprob_isnum = lnprob[ind_isnum]
-        ind_max=np.argmax(lnprob_isnum)
+        ind_max = np.argmax(lnprob_isnum)
         
-        # this should all go to a storage method
-        # also, sometims one probably wants p(<val) at specific values, not val at specific p(<val)
         self.max_lnprob[iy,ix] = np.max(lnprob_isnum)
         self.delta_best[iy,ix,:] = delta_mag[ind_isnum[ind_max],:]
         for i, parn in enumerate(self.outparnames):
             par = np.squeeze(self.stargrid.pars[parn])[ind_isnum]
             order = np.argsort(par)
             cdf = np.cumsum(np.exp(lnprob_isnum[order])) / np.sum(np.exp(lnprob_isnum))
-            ind_ptiles= np.searchsorted(cdf,self.rp['percentiles']) 
-            self.parval[parn][iy,ix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 # should linear interpolate instead of average.
+            ind_ptiles= np.searchsorted(cdf,self.rp['percentiles'])
+            # should linear interpolate instead of average.
+            self.parval[parn][iy,ix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 
             self.parval[parn][iy,ix,-1] = par[ind_max]        
+    
+    def store_samples(self, lnprob, delta_mag, nsample):
+        """resample the prior grid according to the likelihood so as to generate a sampling
+        of the posterior-pdf"""
+        pass
 
-
+    def store_pdf(self, lnprob, delta_mag, at_parvals):
+        """Calculate the CDF p(<p1 | p2, p3, p4) for given values of p1, p2,..."""
+        pass
+    
     def build_grid(self, attenuator = None):
         """Build the SED fitting grid using the intialized parameters."""
         start = time.time()
@@ -133,7 +146,7 @@ class StarfitterGrid(Starfitter):
             pst +=  [self.basel.structure_array(self.parval[par][0,:,0:3],
                                             ['{0}_p{1:03.0f}'.format(par.replace('galex_',''), pt*1000)
                                              for pt in self.rp['percentiles']])]
-
+            pst += [self.basel.structure_array(self.parval[par][0,:,-1], ['{0}_best'.format(par.replace('galex_',''))])]
         #put everything together (including ra, dec, and other header info) and write it out
         cat = self.basel.join_struct_arrays( [self.rp['data_header'], m, me, cb] + pst )
         cols = pyfits.ColDefs(cat)
@@ -193,7 +206,7 @@ class StarfitterGrid(Starfitter):
         self.params['A_V'] = {'min':-1.5, 'max':0.5, 'type':'log'}
         self.params['R_V'] = {'min':2., 'max':4., 'type':'linear'}
         self.params['F_BUMP'] = {'min':0.1, 'max':1.1, 'type':'linear'}
-
+        
 
 
 

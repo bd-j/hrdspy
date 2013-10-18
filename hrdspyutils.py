@@ -71,31 +71,31 @@ def spheredist(ra1, dec1, ra2, dec2):
     return degrees(arctan2(numer, denom)), degrees(theta)
 
 
-def structure_array(self, values,fieldnames, types=['<f8']):
+def structure_array(values,fieldnames, types=['<f8']):
     """turn a numpy array of floats into a structurd array. fieldnames can be a list or
     string array of parameter names with length nfield.
     Assumes pars is a numpy array of shape (nobj,nfield)
     """
-    values=np.atleast_2d(values)
+    values = np.atleast_2d(values)
     if values.shape[-1] != len(fieldnames):
         if values.shape[0] == len(fieldnames):
-            values=values.T
+            values = values.T
         else:
             raise ValueError('modelgrid.structure_array: array and fieldnames do not have consistent shapes!')
-    nobj=values.shape[0]
+    nobj = values.shape[0]
         
     #set up the list of tuples describing the fields.  Assume each parameter is a float
-    fieldtuple=[]
+    fieldtuple = []
     for i,f in enumerate(fieldnames):
         if len(types) > 1 :
             tt =types[i]
         else: tt=types[0]
         fieldtuple.append((f,tt))
         #create the dtype and structured array                    
-    dt=np.dtype(fieldtuple)
-    struct=np.zeros(nobj,dtype=dt)
+    dt = np.dtype(fieldtuple)
+    struct = np.zeros(nobj,dtype=dt)
     for i,f in enumerate(fieldnames):
-        struct[f]=values[...,i]
+        struct[f] = values[...,i]
     return struct
 
 def join_struct_arrays(arrays):
