@@ -40,7 +40,8 @@ class Starfitter(object):
         self.nx, self.ny = self.data_mag.shape[0], self.data_mag.shape[1]
         
         gg = np.where((self.data_mag != 0) & np.isfinite(self.data_mag),1,0)
-        self.goodpix = np.where(gg.sum(axis = 2) == len(self.rp['fnamelist'])) #restrict to detections in all bands
+        #restrict to detections in all bands
+        self.goodpix = np.where(gg.sum(axis = 2) == np.array(self.rp['use_filter_in_fit']).sum()) 
                     
     def setup_output(self):
         """Create arrays to store fit output for each pixel."""
@@ -55,7 +56,7 @@ class Starfitter(object):
         except (KeyError):
             self.doresid = False
         if self.doresid is True:
-            self.delta_best = np.zeros([self.nx,self.ny,len(self.filterlist)])+float('NaN')
+            self.delta_best = np.zeros([self.nx,self.ny,np.array(self.rp['use_filter_in_fit']).sum()])+float('NaN')
         self.stargrid.parorder = utils.sortgrid(self.stargrid.pars,
                                             sortlist = self.outparnames)
 
@@ -123,40 +124,16 @@ class StarfitterGrid(Starfitter):
         self.stargrid.sed, self.stargrid.lbol, tmp = self.basel.generateSEDs(self.stargrid.pars,self.filterlist,
                                                                              attenuator = attenuator,
                                                                              wave_min=self.rp['wave_min'],
-                                                                             wave_max=self.rp['wave_max'])        
+                                                                             wave_max=self.rp['wave_max'])
+        #add SED absolute magnitudes to stargrid parameters
+        sed = self.stargrid.sed.view(dtype = zip(self.rp['fnamelist'], ['float64']*len(self.rp['fnamelist'])))
+        self.stargrid.pars = self.stargrid.join_struct_arrays([self.stargrid.pars, squeeze(sed.copy())])
+        #now keep just those filters to be used in the fitting
+        self.stargrid.sed = self.stargrid.sed[:,np.array(self.rp['use_filter_in_fit'])]
+        
         self.stargrid.wavelength = self.basel.wavelength
         duration=time.time()-start
         print('Model Grid built in {0:.1f} seconds'.format(duration))
-
-
-    def write_catalog(self, outparlist = None):
-        """Write fit results to a FITS binary table.  Too highly specialized"""
-        if outparlist is None: outparlist = self.rp['outparnames']
-        dm = 5.0*np.log10(self.rp['dist']) + 25
-
-        #input magnitudes
-        m = self.basel.structure_array(self.data_mag[0,:,:]+dm,
-                                       self.rp['fnamelist'])
-        #input magnitude errors
-        me = self.basel.structure_array(self.data_magerr[0,:,:],
-                                         ['{0}_unc'.format(f) for f in self.rp['fnamelist']])
-        #best-fit chi^2
-        cb = self.basel.structure_array(self.max_lnprob[0,:]*(-2),
-                                         ['chibest'])
-        #paramater percentiles 
-        pst = []
-        for i, par in enumerate(outparlist):
-            print(par, self.parval[par][0,:,0:3].shape)
-            print(['{0}_p{1:5.3f}'.format(par.replace('galex_',''), pt) for pt in self.rp['percentiles']])
-            pst +=  [self.basel.structure_array(self.parval[par][0,:,0:3],
-                                            ['{0}_p{1:03.0f}'.format(par.replace('galex_',''), pt*1000)
-                                             for pt in self.rp['percentiles']])]
-            pst += [self.basel.structure_array(self.parval[par][0,:,-1], ['{0}_best'.format(par.replace('galex_',''))])]
-        #put everything together (including ra, dec, and other header info) and write it out
-        cat = self.basel.join_struct_arrays( [self.rp['data_header'], m, me, cb] + pst )
-        cols = pyfits.ColDefs(cat)
-        tbhdu = pyfits.new_table(cols)
-        tbhdu.writeto('{0}_starprops.fits'.format(self.rp['outname']), clobber = True)
 
 
     def initialize_grid(self, params = None):
@@ -200,7 +177,6 @@ class StarfitterGrid(Starfitter):
         #but this effectively includes some uncertainty in the isochrones
         self.stargrid.add_par(np.log10(isoc.pars['MASSIN'][draw]), 'LOGM') 
 
-
     def set_default_params(self):
         """Set the default model parameter properties."""
         self.params = {}
@@ -213,30 +189,28 @@ class StarfitterGrid(Starfitter):
         self.params['F_BUMP'] = {'min':0.1, 'max':1.1, 'type':'linear'}
         
 
-
-
 class StarfitterMCMC(Starfitter):
     """Use emcee to do MCMC sampling of the parameter space for a given pixel.  Wildly unfinished/untested"""
 
     def set_default_params(self, large_number = 1e15):
         """Set the default model parameter ranges."""
-        #should be list of dicts or dict of lists?  no, dict of dicts!
-        self.params = {}
+        pass
 
     def fit_pixel(self, ix, iy):
-        obs, err  = self.data_mag[ix,iy,:], self.data_magerr[ix,iy,:]
-        obs_maggies = 10**(0-obs/2.5)
-        obs_ivar = (obs_maggies*err/1.086)**(-2)
-        mask = np.where((obs < 0) & np.isfinite(obs) , 1, 0)
+        obs = {}
+        mag, err  = self.data_mag[ix,iy,:], self.data_magerr[ix,iy,:]
+        obs['maggies'] = 10**(0-mag/2.5)
+        obs['ivar'] = (obs['maggies']*err/1.086)**(-2)
+        obs['mask'] = ((mag < 0) & np.isfinite(mag))
 
-        sampler = self.sample(obs_maggies, obs_ivar, mask)
+        sampler = self.sample(obs)
 
-    def sample(self,obs_maggies, obs_ivar, mask):
-        initial = self.initial_proposal()
+    def sample(self,obs):
+        initial = self.initial_proposal(obs = obs)
 
         #get a sampler, burn it in, and reset
         sampler = emcee.EnsembleSampler(self.rp['nwalkers'], self.rp['ndim'], self.lnprob, threads=nthreads,
-                                        args = [obs_maggies,obs_ivar,mask] )
+                                        args = [obs, theta_names] )
         pos,prob,state,blob = sampler.run_mcmc(initial, self.rp['nburn'])
         sampler.reset()
 
@@ -245,45 +219,57 @@ class StarfitterMCMC(Starfitter):
 
         return sampler
 
-    def initial_proposal(self):
-        parnames = self.lnprob.lnprob_parnames
+    def initial_proposal(self, obs = None, theta_names = None):
+        
         theta = np.zeros(len(parnames))
         for j, parn in enumerate(parnames) :
             theta[:,j] = np.random.uniform(self.params[parn]['min'],self.params[parn]['max'])
         return theta
 
 
-    def lnprob(self, theta, obs_maggies, obs_ivar, mask):
-        lnprob_parnames = ['UMIN', 'UMAX', 'GAMMA', 'QPAH', 'MDUST']
-        #pardict = {lnprob_parnames theta} #ugh.  need quick dict or struct_array from list/array
+    def lnprob(self, theta, obs, theta_names):
+        pars = theta.view(dtype = zip(parnames,['float64']*len(parnames)))
+        lnp_prior = prior_lnprob(pars)
 
+        if ~np.isfinite(lnp_prior):
+            return -np.infty
+        else:
+            #model sed (in AB absolute mag) for these parameters
+            sed, lbol = self.model(pars)
+            if lbol == 0.:
+                return -np.infty #model parameters outside available grid
+            sed_maggies = 10**(0-sed/2.5)
+        
+            #probability
+            d = (sed_maggies - obs['maggies'])
+            chi2 = ( d*d )*obs['ivar']
+            inds = (obs['mask'] > 0)
+            lnprob = -0.5*chi2[inds].sum() + lnp_prior
+        
+        return lnprob
+
+
+    def model(pars):
+        sed, lbol, tmp = self.basel.generateSEDs(pars,self.filterlist,
+                                                 attenuator = self.attenuator,
+                                                 wave_min=self.rp['wave_min'],
+                                                 wave_max=self.rp['wave_max'])
+        return sed, lbol
+
+
+    def prior_lnprob(pars):
+        
         #prior bounds check
         ptest=[]
-        for i,par in enumerate(lnprob_parnames):
+        for i,par in enumerate(pars.dtype.names):
             ptest.append(pardict[par] >= self.params[par]['min'])
             ptest.append(pardict[par] <= self.params[par]['max'])
             if self.params[par]['type'] == 'log' : pardict[par] = 10**pardict[par]
-                
         if False in ptest:
             #set lnp to -infty if parameters out of prior bounds
             lnprob = -np.infty
             lbol = -1
 
-        else:
-            #model sed (in AB absolute mag) for these parameters
-            sed, lbol = self.model(**pardict)
-            sed_maggies = 10**(0-sed/2.5)
-        
-            #probability
-            chi2 = ( (sed_maggies - obs_maggies)**2 )*obs_ivar
-            inds = np.where(mask > 0)
-            lnprob = -0.5*chi2[inds].sum()
-        
-        return lnprob, [lbol]
-
-
-    def model():
-        pass
 
 #####
 #### Output methods

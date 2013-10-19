@@ -16,7 +16,8 @@ class BaSeL3(SpecLibrary):
     def __init__(self):
         self.pars = None
         self.spectra = None
-
+        self.triangle_dirtiness = 2
+        
     def read_all_Z(self):
         """Read the spectral libraries (as fits binary tables) for all avaliable metallicities,
         store in a SpecLibrary object."""
@@ -61,12 +62,12 @@ class BaSeL3(SpecLibrary):
             self.pars = np.hstack([self.pars, pars])
             self.spectra = np.vstack([self.spectra, spec])
                         
-    def spectra_from_pars(self, parstruct):
-        return self.generate_spectrum(parstruct['LOGL'],parstruct['LOGT'],parstruct['LOGG'],parstruct['Z'])
+    def spectra_from_pars(self, parstruct, **extras):
+        return self.generate_spectrum(parstruct['LOGL'],parstruct['LOGT'],parstruct['LOGG'],parstruct['Z'], **extras)
 
-    def generate_spectrum(self, logl, logt, logg, Z):
+    def generate_spectrum(self, logl, logt, logg, Z, **extras):
         logz = np.log10(Z/0.0190)
-        spec = self.interpolate_to_pars( np.array([logt,logg,logz]).T, parnames = ['LOGT','LOGG','M_H'])
+        spec = self.interpolate_to_pars( np.array([logt,logg,logz]).T, parnames = ['LOGT','LOGG','M_H'], **extras)
 
         log_lbol_lsun = np.log10(observate.Lbol(self.wavelength,spec)) - np.log10(lsun)
         renorm = 10**(logl - log_lbol_lsun)

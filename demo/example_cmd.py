@@ -13,8 +13,8 @@ import time
 filternamelist = ['ctio_mosaic_ii_Uj','ctio_mosaic_ii_B','ctio_mosaic_ii_V',
                   'ctio_mosaic_ii_Rc','ctio_mosaic_ii_Ic']
 filterlist = observate.load_filters(filternamelist)
-j = 1
-k = 3
+j, k = 1, 3 #color to plot
+
 
 # instantiate and load the isochrones and spectra first so you
 # don't have to do it for each cluster realization
