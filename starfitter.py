@@ -149,7 +149,7 @@ class StarfitterGrid(Starfitter):
         self.stargrid.set_pars(theta, parnames)
 
 
-    def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.59, logt_min =3.5):
+    def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.69, logt_min =3.5):
         """Draw model grid parameters from isochrones. This effectively uses the
         isochrone grid points as priors on the stellar properties."""
         isoc = isochrone.Padova2007()
@@ -167,12 +167,16 @@ class StarfitterGrid(Starfitter):
         #indeed, there should be a way to attach a prior probablity based on mass and completeness
         #or selection within a color/magnitude bin
         draw = (np.random.uniform(0, isoc.pars.shape[0]-1, self.rp['ngrid'])).astype(int)
+        #add a little uncertainty to the isochrones
         self.stargrid.pars['LOGL'] = isoc.pars['LOGL'][draw]+np.random.normal(0, 0.15, self.rp['ngrid'])
+        #clip again for the stellar library
         self.stargrid.pars['LOGT'] = np.clip(isoc.pars['LOGT'][draw]+
                                              np.random.normal(0, 0.05, self.rp['ngrid']),
-                                             logt_min, logt_max) #clip again for the stellar library
-        self.stargrid.pars['LOGG'] = np.clip(isoc.pars['LOGG'][draw] + 1.05, -0.5, 4.8) #HACK. added one to better fit the basel library
-        
+                                             logt_min, logt_max)
+        #HACK. added to better fit the basel library
+        self.stargrid.pars['LOGG'] = np.clip(isoc.pars['LOGG'][draw]*1.18 + 0.2, -0.5, 4.9)
+        # make Hot things have available 
+        self.stargrid.pars['LOGG'][self.stargrid.pars['LOGT'] > 4.59] = 5.0
         #mass goes along for the ride.  Should actually come from interpolation of L and T
         #but this effectively includes some uncertainty in the isochrones
         self.stargrid.add_par(np.log10(isoc.pars['MASSIN'][draw]), 'LOGM') 
