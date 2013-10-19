@@ -8,23 +8,20 @@ from numpy import squeeze, argsort, log10, radians, degrees, sin, cos, arctan2, 
 
 def lnprob_grid(grid, obs, err, mask):
     #linearize fluxes.  
-    inds = np.where(mask > 0)
-    inds=inds[0]
-    mod_maggies = 10**(0-grid.sed[...,inds]/2.5)
-    obs_maggies = 10**(0-obs[inds]/2.5)
-    obs_ivar = (obs_maggies[inds]*err[inds]/1.086)**(-2)
+    mod_maggies = 10**(0-grid.sed/2.5)
+    obs_maggies = 10**(0-obs/2.5)
+    obs_ivar = (obs_maggies*err/1.086)**(-2)
 
     #best scale for these parameters.  sums are over the bands
     #lstar = np.squeeze(( (mod_maggies*obs_maggies*obs_ivar).sum(axis=-1) ) /
     #                   ( ( (mod_maggies**2.0)*obs_ivar ).sum(axis=-1) ))
     #lbol = grid.lbol*lstar
-        
     #probability with dimensional juggling to get the broadcasting right
     #chi2 =  (( (lstar*mod_maggies.T).T - obs_maggies)**2)*obs_ivar
     #delta_mag = 0-2.5*np.log10((lstar*mod_maggies.T).T/obs_maggies)
 
     chi2 = (( mod_maggies - obs_maggies)**2)*obs_ivar
-    lnprob = squeeze(-0.5*chi2.sum(axis=-1))
+    lnprob = squeeze(-0.5*chi2[:,mask].sum(axis=-1))
     delta_mag = 0 - 2.5*log10(mod_maggies/obs_maggies)
     #clean NaNs
     

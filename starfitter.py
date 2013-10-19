@@ -29,85 +29,80 @@ class Starfitter(object):
         self.basel = starmodel.BaSeL3()  # BaSeL 3.1 Basis
         self.basel.read_all_Z()
         self.stargrid = starmodel.SpecLibrary() #object to hold the model grid
-        self.filterlist = observate.load_filters(self.rp['fnamelist']) #filter objects
+        self.model_filterlist = observate.load_filters(self.rp['model_fnamelist']) #filter objects
+        self.fit_filterlist = observate.load_filters(self.rp['fit_fnamelist'])
         
     def load_data(self):
         """Read the catalogs, apply distance modulus,
         and determine 'good' pixels"""
-        self.data_mag, self.data_magerr, self.rp['data_header'] = catio.load_image_cube(self.rp)
-        dm = 5.0*np.log10(self.rp['dist'])+25
-        self.data_mag = np.where(self.data_mag > 10.0, self.data_mag-dm, float('NaN'))
-        self.nx, self.ny = self.data_mag.shape[0], self.data_mag.shape[1]
-        
-        gg = np.where((self.data_mag != 0) & np.isfinite(self.data_mag),1,0)
-        #restrict to detections in all bands
-        self.goodpix = np.where(gg.sum(axis = 2) == np.array(self.rp['use_filter_in_fit']).sum()) 
-                    
+        self.data_filterlist = observate.load_filters(self.rp['data_fnamelist'])
+        self.data_mag, self.data_magerr, self.data_header = catio.load_image_cube(self.rp)
+        self.distance_modulus = 5.0*np.log10(self.rp['dist'])+25
+        self.nobj = self.data_mag.shape[0]
+                            
     def setup_output(self):
         """Create arrays to store fit output for each pixel."""
-        self.max_lnprob = np.zeros([self.nx,self.ny])+float('NaN')
-        self.outparnames = self.rp['outparnames']
+        self.max_lnprob = np.zeros(self.nobj)+float('NaN')
         self.parval ={}
-        for parn in self.outparnames:
-            self.parval[parn] = np.zeros([self.nx,self.ny,len(self.rp['percentiles'])+1])+float('NaN')
-
-        try:
-            self.doresid = self.rp['return_residuals']
-        except (KeyError):
-            self.doresid = False
-        if self.doresid is True:
-            self.delta_best = np.zeros([self.nx,self.ny,np.array(self.rp['use_filter_in_fit']).sum()])+float('NaN')
+        for parn in self.rp['outparnames']:
+            self.parval[parn] = np.zeros([self.nobj,len(self.rp['percentiles'])+1])+float('NaN')
+        if self.rp['return_residuals'] is True:
+            self.delta_best = {}
+            for fname in self.rp['fit_fnamelist']:
+                self.delta_best[fname] = np.zeros([self.nobj])+float('NaN')
         self.stargrid.parorder = utils.sortgrid(self.stargrid.pars,
-                                            sortlist = self.outparnames)
+                                            sortlist = self.rp['outparnames'])
 
     def fit_image(self):
         """Fit every 'pixel' in an image."""
         if hasattr(self,'max_lnprob') is False:
             self.setup_output()
+
+        #build matching arrays of observed and and model SED
+        self.stargrid.sed = np.array([ self.stargrid.pars[band] for band in self.rp['fit_fnamelist']]).T
+        obs  = np.array([self.data_mag[band] for band in self.rp['fit_fnamelist']]) - self.distance_modulus
+        err = np.array([self.data_magerr[band+'_unc'] for band in self.rp['fit_fnamelist']])
+        
         start = time.time()
-        for ipix in xrange(self.goodpix[0].shape[0]):
-            iy, ix  = self.goodpix[0][ipix], self.goodpix[1][ipix]
-            self.fit_pixel(ix,iy)
-        duration =  time.time()-start
+        for ipix in xrange(self.nobj):
+            self.fit_pixel(ipix, obs[:,ipix], err[:,ipix])
+        duration = time.time()-start
         print('Done all pixels in {0:.1f} seconds'.format(duration) )
 
 
 class StarfitterGrid(Starfitter):
 
-    def fit_pixel(self, ix, iy, store = True, show_cdf = False):
-        """Determine \chi^2 of every model for a given pixel, and store moments
+    def fit_pixel(self, ipix, obs, err, store = True, show_cdf = False):
+        """Determine -\chi^2/2 of every model for a given pixel, and store moments
         of the CDF for each parameter as well as the bestfitting model parameters.
         Optionally store magnitude residuals from the best fit."""
-        
-        obs, err = self.data_mag[iy,ix,:], self.data_magerr[iy,ix,:]
-        mask = np.where((obs != 0) & np.isfinite(obs), 1, 0)
-    
+        mask = (obs != 0) & np.isfinite(obs) & np.isfinite(err)
         lnprob , delta_mag = utils.lnprob_grid(self.stargrid, obs, err, mask)
-
-        self.store_percentiles(iy, ix, lnprob, delta_mag)
+        self.store_percentiles(ipix, lnprob, delta_mag)
         
-    def store_percentiles(self, iy, ix, lnprob, delta_mag, tiny_lnprob = -1e30):
+    def store_percentiles(self, ipix, lnprob, delta_mag, tiny_lnprob = -1e30):
         """Store percentiles of the marginalized pdf.
         The sorting of each parameter in stargrid should be done
         prior to this function, since this is a time sink when the grid is large"""
 
-        ind_isnum = np.where(isfinite(lnprob))[0]
-        if ind_isnum.shape[0] == 0:
+        lnprob[~isfinite(lnprob)] = tiny_lnprob
+        lmax = lnprob.max()
+        if lmax <= tiny_lnprob:
             print(ix,iy)
             return
-        lnprob[~isfinite(lnprob)] = tiny_lnprob
         ind_max = np.argmax(lnprob)
-        self.max_lnprob[iy,ix] = lnprob.max()
-        self.delta_best[iy,ix,:] = delta_mag[ind_max,:]
+        self.max_lnprob[ipix] = lmax
+        for i,fname in enumerate(self.rp['fit_fnamelist']):
+            self.delta_best[fname][ipix] = delta_mag[ind_max,i]
 
-        for i, parn in enumerate(self.outparnames):
+        for i, parn in enumerate(self.rp['outparnames']):
             par = squeeze(self.stargrid.pars[parn])
             order = self.stargrid.parorder[parn]
             cdf = cumsum(exp(lnprob[order])) / np.sum(exp(lnprob))
             ind_ptiles= np.searchsorted(cdf,self.rp['percentiles'])
             # should linear interpolate instead of average.
-            self.parval[parn][iy,ix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 
-            self.parval[parn][iy,ix,-1] = par[ind_max]        
+            self.parval[parn][ipix,:-1] = (par[order[ind_ptiles-1]] +par[order[ind_ptiles]])/2.0 
+            self.parval[parn][ipix,-1] = par[ind_max]        
     
     def store_samples(self, lnprob, delta_mag, nsample):
         """resample the prior grid according to the likelihood so as to generate a sampling
@@ -121,20 +116,17 @@ class StarfitterGrid(Starfitter):
     def build_grid(self, attenuator = None):
         """Build the SED fitting grid using the intialized parameters."""
         start = time.time()
-        self.stargrid.sed, self.stargrid.lbol, tmp = self.basel.generateSEDs(self.stargrid.pars,self.filterlist,
-                                                                             attenuator = attenuator,
-                                                                             wave_min=self.rp['wave_min'],
-                                                                             wave_max=self.rp['wave_max'])
+        sed, self.stargrid.lbol, tmp = self.basel.generateSEDs(self.stargrid.pars,self.model_filterlist,
+                                                               attenuator = attenuator,
+                                                               wave_min=self.rp['wave_min'],
+                                                               wave_max=self.rp['wave_max'])
         #add SED absolute magnitudes to stargrid parameters
-        sed = self.stargrid.sed.view(dtype = zip(self.rp['fnamelist'], ['float64']*len(self.rp['fnamelist'])))
-        self.stargrid.pars = self.stargrid.join_struct_arrays([self.stargrid.pars, squeeze(sed.copy())])
-        #now keep just those filters to be used in the fitting
-        self.stargrid.sed = self.stargrid.sed[:,np.array(self.rp['use_filter_in_fit'])]
-        
+        dt = zip(self.rp['model_fnamelist'], ['float64']*len(self.rp['model_fnamelist']))
+        self.stargrid.pars = self.stargrid.join_struct_arrays([self.stargrid.pars, squeeze(sed.view(dtype = dt))])
+                
         self.stargrid.wavelength = self.basel.wavelength
         duration=time.time()-start
         print('Model Grid built in {0:.1f} seconds'.format(duration))
-
 
     def initialize_grid(self, params = None):
         """Draw grid parameters from prior distributions and build the grid."""
@@ -147,7 +139,6 @@ class StarfitterGrid(Starfitter):
             if self.params[parn]['type'] == 'log':
                 theta[:,j]=10**theta[:,j] #deal with uniform log priors   
         self.stargrid.set_pars(theta, parnames)
-
 
     def set_params_from_isochrone(self, Z = None, logl_min = 1, logt_max = 4.69, logt_min =3.5):
         """Draw model grid parameters from isochrones. This effectively uses the
