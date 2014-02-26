@@ -5,10 +5,10 @@ generate CMDs/HRDs and integrated spectra of single age stellar populations for 
 
 installation & setup:
 
-	1. download code to some directory 'hdir' 
-	2. cp the FSPS Padova2007 isochrones to 'hdir'/data/isochrones 
-	3. download the BaSeL_3.1 *.cor files of stellar spectra to the 'hdir'/data/spectra/ directory and run the provided 'fitsify'  idl script.
-	4. install sedpy (https://github.com/bd-j/sedpy), and copy any other desired filters from Blanton's k_correct
+1. download code to some directory 'hdir' 
+2. cp the FSPS Padova2007 isochrones to 'hdir'/data/isochrones 
+3. download the BaSeL_3.1 *.cor files of stellar spectra to the 'hdir'/data/spectra/ directory and run the provided 'fitsify'  idl script.
+4. install sedpy (https://github.com/bd-j/sedpy), and copy any other desired filters from Blanton's k_correct
 
 The basic object class is a 'Cluster', which is composed of an IMF, an isochrone library, and a stellar spectral library.  The fundamental parameters of this object are logage, total_mass, and Z.  Observational filters and dust may also be specified. The output is a library of stellar SEDs and properties, and an integrated spectrum, which are attributes of the Cluster object.
 
