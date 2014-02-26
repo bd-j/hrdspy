@@ -6,7 +6,8 @@ from modelgrid import *
 #import sedmodels
 
 class Padova2007(ModelLibrary):
-    isocdir = os.getenv('hrdspy')+'/data/isochrones/'
+    hrdspydir, f = os.path.split(__file__)
+    isocdir = hrdspydir + '/data/isochrones/'
 
     def __init__(self):
         self.pars = None

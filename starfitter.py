@@ -191,17 +191,16 @@ class StarfitterMCMC(Starfitter):
         """Set the default model parameter ranges."""
         pass
 
-    def fit_pixel(self, ix, iy):
+    def fit_pixel(self, ipix, mag, err):
         obs = {}
-        mag, err  = self.data_mag[ix,iy,:], self.data_magerr[ix,iy,:]
         obs['maggies'] = 10**(0-mag/2.5)
         obs['ivar'] = (obs['maggies']*err/1.086)**(-2)
         obs['mask'] = ((mag < 0) & np.isfinite(mag))
 
-        sampler = self.sample(obs)
+        sampler = self.sample(obs, theta_names)
 
-    def sample(self,obs):
-        initial = self.initial_proposal(obs = obs)
+    def sample(self,obs, theta_names):
+        initial = self.initial_proposal(theta_names, obs = obs)
 
         #get a sampler, burn it in, and reset
         sampler = emcee.EnsembleSampler(self.rp['nwalkers'], self.rp['ndim'], self.lnprob, threads=nthreads,
@@ -214,7 +213,10 @@ class StarfitterMCMC(Starfitter):
 
         return sampler
 
-    def initial_proposal(self, obs = None, theta_names = None):
+    def initial_proposal(self, theta_names, obs = None):
+        tnames = ['LOGT', 'LOGL', 'Z', 'LOGG', 'A_V', 'R_V', 'F_BUMP', 'UV_SLOPE']
+        logl = c1 * obs['maggies'].avg()
+        logt = c2 * (obs['maggies'][0]/obs['maggies'][-1])
         
         theta = np.zeros(len(parnames))
         for j, parn in enumerate(parnames) :
