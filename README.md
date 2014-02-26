@@ -4,6 +4,7 @@ hrdspy
 generate CMDs/HRDs and integrated spectra of single age stellar populations for arbitrary IMFs and total masses.  Also, fit stellar SEDs.
 
 installation & setup:
+
 	1. download code to some directory 'hdir' 
 	2. cp the FSPS Padova2007 isochrones to 'hdir'/data/isochrones 
 	3. download the BaSeL_3.1 *.cor files of stellar spectra to the 'hdir'/data/spectra/ directory and run the provided 'fitsify'  idl script.
