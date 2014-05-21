@@ -12,7 +12,7 @@ pl.figure()
 all_sfh = np.zeros([nsim, len(bins)-1])
 sfr = 1e-2
 for i in xrange(nsim):
-    m, t, sfh = clusters.sfh(sfr = sfr, interval = 1e8, timebins = bins)
+    m, t, sfh = clusters.sfh(sfr = sfr, interval = np.max(bins), timebins = bins)
     all_sfh[i,:] = sfh
     #pl.plot(t,m,'.')
     pl.plot(bcent, sfh)
