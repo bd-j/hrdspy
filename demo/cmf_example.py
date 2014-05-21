@@ -1,8 +1,8 @@
-import cmf
+import imf
 import numpy as np
 import matplotlib.pyplot as pl
 
-clusters = cmf.CMF()
+clusters = imf.CMF()
 bins = 10**np.linspace(6.7,8,14)
 nsim = 100
 
