@@ -1,9 +1,7 @@
 import numpy as np
-import imf
-import starmodel
-import isochrone
-import observate
 import matplotlib.pyplot as pl
+import starmodel, isochrone, imf
+from sedpy import observate
 
 class Cluster(object):
     def __init__(self, target_mass, logage, Z, isoc = None, speclib = None, IMF = None,):

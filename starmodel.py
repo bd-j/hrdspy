@@ -1,10 +1,8 @@
 import os, glob
 import numpy as np
-#import astropy.constants as constants
 
-import observate
-from modelgrid import *
-
+from sedpy import observate
+from sedpy.modelgrid import *
 
 class BaSeL3(SpecLibrary):
     """Class to handle BaSeL 3.1 stellar spectral library"""

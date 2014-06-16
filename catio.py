@@ -4,7 +4,7 @@ from StringIO import StringIO
 from astropy.io import ascii
 import sqlite3 as lite
 
-import observate
+from sedpy import observate
 import hrdspyutils as utils
 
 ##########

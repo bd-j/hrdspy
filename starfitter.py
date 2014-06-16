@@ -5,11 +5,9 @@ import os, time
 import numpy as np
 import astropy.io.fits as pyfits
 
-import observate
-import starmodel
-import isochrone
+from sedpy import observate
+import starmodel, isochrone, catio
 import hrdspyutils as utils
-import catio
 
 from numpy import isfinite, exp, squeeze, cumsum
 from hrdspyutils import lnprob_grid

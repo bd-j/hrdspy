@@ -2,9 +2,8 @@
 # in a set of filters.  Also, determine main sequence lifetime
 import numpy as np
 import matplotlib.pyplot as pl
-import isochrone
-import starmodel
-import observate
+import isochrone, starmodel
+from sedpy import observate
 
 mlist = [3,4,6,10,25]
 
