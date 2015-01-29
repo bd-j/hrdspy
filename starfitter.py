@@ -43,7 +43,8 @@ class Starfitter(object):
         self.max_lnprob = np.zeros(self.nobj)+float('NaN')
         self.parval ={}
         for parn in self.rp['outparnames']:
-            self.parval[parn] = np.zeros([self.nobj,len(self.rp['percentiles'])+1])+float('NaN')
+            self.parval[parn] = np.zeros([self.nobj,
+                                          len(self.rp['percentiles'])+1])+float('NaN')
         if self.rp['return_residuals'] is True:
             self.delta_best = {}
             for fname in self.rp['fit_fnamelist']:
@@ -57,8 +58,10 @@ class Starfitter(object):
             self.setup_output()
 
         #build matching arrays of observed and and model SED
-        self.stargrid.sed = np.array([ self.stargrid.pars[band] for band in self.rp['fit_fnamelist']]).T
-        obs  = np.array([self.data_mag[band] for band in self.rp['fit_fnamelist']]) - self.distance_modulus
+        self.stargrid.sed = np.array([ self.stargrid.pars[band] for band in
+                                       self.rp['fit_fnamelist']]).T
+        obs  = (np.array([self.data_mag[band] for band in self.rp['fit_fnamelist']]) -
+                self.distance_modulus)
         err = np.array([self.data_magerr[band+'_unc'] for band in self.rp['fit_fnamelist']])
         
         start = time.time()

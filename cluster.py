@@ -4,6 +4,7 @@ import starmodel, isochrone, imf
 from sedpy import observate
 
 class Cluster(object):
+    
     def __init__(self, target_mass, logage, Z, isoc = None, speclib = None, IMF = None,):
         self.target_mass = target_mass
         self.logage = logage
@@ -16,7 +17,7 @@ class Cluster(object):
         else:
             self.imf = IMF
         if isoc is None:
-            self.isoc=isochrone.Padova2007()
+            self.isoc = isochrone.Padova2007()
             self.isoc.load_all_isoc()
         else:
             self.isoc = isoc
@@ -30,23 +31,28 @@ class Cluster(object):
         #self.stars.wavelength = self.speclib.wavelength
         
     def generate_stars(self):
-        """Generate a population of stars from the IMF given a preset total mass for the cluster.
-        Then, determine the parameters of these stars from interpolation of the isochrone values
-        given the age and metallicity of the population.  Returns a structured array of shape (nstar)
-        where each field of the structure is a stellar parameter."""
-        
+        """Generate a population of stars from the IMF given a preset
+        total mass for the cluster.  Then, determine the parameters of
+        these stars from interpolation of the isochrone values given
+        the age and metallicity of the population.  Returns a
+        structured array of shape (nstar) where each field of the
+        structure is a stellar parameter.
+        """
         star_masses = self.imf.sample(self.target_mass)
         print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
         
         self.stars.pars = self.isoc.get_stellar_pars_at(star_masses, self.logage, self.Z )
         self.nstars=self.stars.pars.shape[0]
-        self.total_mass_current = (self.stars.pars['MASSACT'][np.isfinite(self.stars.pars['MASSACT'])]).sum()   
+        live = np.isfinite(self.stars.pars['MASSACT'])
+        self.total_mass_current = (self.stars.pars['MASSACT'][live]).sum()   
 
     def observe_stars(self,filterlist = None):
-        """Obtain the spectra of each star using the stellar spectral library and convolve with the
-        supplied list of filter transmission curves to obtain and populate the SED field of self."""
-
+        """Obtain the spectra of each star using the stellar spectral
+        library and convolve with the supplied list of filter
+        transmission curves to obtain and populate the SED field of
+        self.
+        """
         if filterlist is not None:
             self.filterlist = filterlist
         self.nfilters = len(self.filterlist)
@@ -59,12 +65,14 @@ class Cluster(object):
         self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = self.speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator = None, intspec = True )
 
     def plot_CMD(self,iname,jname,kname, outfilename = None):
-        """Plot the color-magnitude diagram of the stars, given the filter nicknames for
-        the desired color and magnitude."""
-        
+        """Plot the color-magnitude diagram of the stars, given the
+        filter nicknames for the desired color and magnitude.
+        """
         live = (np.where(np.isfinite(self.stars.pars['MASSACT'])))[0]
-        pl.plot(self.stars.seds[live,self.band_names[iname]]-self.stars.seds[live,self.band_names[jname]],
-                selfstars.seds[live,self.band_names[kname]],marker='o',linestyle = 'None',alpha = 0.5)
+        pl.plot(self.stars.seds[live,self.band_names[iname]]-
+                self.stars.seds[live,self.band_names[jname]],
+                selfstars.seds[live,self.band_names[kname]],
+                marker='o',linestyle = 'None',alpha = 0.5)
         pl.ylim(10,-5)
         pl.xlabel(r'%s - %s' %(iname,jname))
         pl.ylabel(r'%s' % kname)

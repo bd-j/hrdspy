@@ -4,7 +4,7 @@
 import numpy as np
 import starmodel
 import isochrone
-import observate
+from sedpy import observate
 import cluster
 import matplotlib.pyplot as pl
 import time
@@ -22,58 +22,63 @@ speclib.read_all_Z()
 
 # set cluster parameters
 Z = 0.0190   #solar metallicity
-mtot = 5e3   #10000 solar masses
-logage = 7.5   #10 Myr
+mtot = 1e4   #10000 solar masses
+logage = 6.6   #10 Myr
 nreal = 10   #10 realizations of the cluster
 
-# set up output
-wave = speclib.wavelength
-spectrum = np.zeros([nreal,wave.shape[0]])
-cluster_values = np.zeros([nreal, 3])
 
-pl.figure(1)
+regenerate=True
 
 start =time.time()
+if regenerate:
+    # set up output
+    wave = speclib.wavelength
+    spectrum = np.zeros([nreal,wave.shape[0]])
+    cluster_values = np.zeros([nreal, 3])
 
-for i in xrange(nreal):
+    for i in xrange(nreal):
 
-    #use Padova2007, BaSeL3.1, and Salpeter IMF (default)
-    cl = cluster.Cluster(mtot, logage, Z, isoc = isoc, speclib = speclib, IMF = None)
-    cl.generate_stars()
-    cl.observe_stars( filterlist )
-    spectrum[i,:] = cl.integrated_spectrum
-    cluster_values[i,0] = cl.total_mass_formed
-    cluster_values[i,1] = cl.nstars
-    cluster_values[i,2] = cl.ndead
+        #use Padova2007, BaSeL3.1, and Salpeter IMF (default)
+        cl = cluster.Cluster(mtot, logage, Z, isoc = isoc, speclib = speclib, IMF = None)
+        cl.generate_stars()
+        cl.observe_stars( filterlist )
+        spectrum[i,:] = cl.integrated_spectrum
+        cluster_values[i,0] = cl.total_mass_formed
+        cluster_values[i,1] = cl.nstars
+        cluster_values[i,2] = cl.ndead
 
-    #cl.reset_stars()
-    #cl.decompose()
+        #cl.reset_stars()
+        #cl.decompose()
 
+        
+
+    s = time.time() -start
+    print("Done %i clusters in %f seconds" %(nreal,s))
+    
+    start = time.time()
+    bigcl = cluster.Cluster(mtot*nreal, logage, Z, isoc = isoc, speclib = speclib, IMF = None)
+    bigcl.generate_stars()
+    bigcl.observe_stars( filterlist )
+    s = time.time() -start
+    print("Done big clusters in %f seconds" %(s))
+
+pl.figure(1)
+for i in range(nreal):
     pl.plot(wave,spectrum[i,:],alpha = 0.3, color='grey')
-
-s = time.time() -start
-print("Done %i clusters in %f seconds" %(nreal,s))
-
-pl.xlim(1e3,1e4)
+pl.xlim(2e3,1e4)
 pl.xscale('log')
 pl.xlabel(r'$\lambda(\AA)$')
 pl.ylim(1e-8,1e-4)
 pl.yscale('log')
 pl.ylabel(r'$erg/s/cm^2/\AA$ at $10pc$')
 pl.plot(wave, spectrum.mean(axis = 0), color='black',label =r'$\langle f_\lambda\rangle$, M$_*=$%3.0e' % (mtot), linewidth=2.0  )
-
-start = time.time()
-bigcl = cluster.Cluster(mtot*nreal, logage, Z, isoc = isoc, speclib = speclib, IMF = None)
-bigcl.generate_stars()
-bigcl.observe_stars( filterlist )
-s = time.time() -start
-print("Done big clusters in %f seconds" %(s))
+    
 
 pl.plot(wave,bigcl.integrated_spectrum/nreal,color='red',label = r'$f_\lambda/%s$, M$_*=$%3.0e' % (nreal, (mtot*nreal)) )
 
-pl.legend()
+pl.legend(loc=0)
 pl.title(r'$\log Age = %4.2f$' % logage)
-pl.savefig('example.png')
-
+pl.savefig('example4.png')
+pl.close()
     
     
