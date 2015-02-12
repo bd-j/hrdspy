@@ -4,8 +4,10 @@ import starmodel, isochrone, imf
 from sedpy import observate
 
 class Cluster(object):
-    
-    def __init__(self, target_mass, logage, Z, isoc = None, speclib = None, IMF = None,):
+    """
+    """
+    def __init__(self, target_mass, logage, Z,
+                 isoc=None, speclib=None, IMF=None,):
         self.target_mass = target_mass
         self.logage = logage
         self. Z = Z
@@ -30,41 +32,65 @@ class Cluster(object):
         self.stars = starmodel.SpecLibrary()
         #self.stars.wavelength = self.speclib.wavelength
         
-    def generate_stars(self):
+    def generate_stars(self, imf=None, isoc=None):
         """Generate a population of stars from the IMF given a preset
         total mass for the cluster.  Then, determine the parameters of
         these stars from interpolation of the isochrone values given
         the age and metallicity of the population.  Returns a
         structured array of shape (nstar) where each field of the
         structure is a stellar parameter.
+
+        :param imf:
+
+        :param isoc:
+        
         """
-        star_masses = self.imf.sample(self.target_mass)
+        if imf is None:
+            imf = self.imf
+        if isoc is None:
+            isoc = self.isoc
+        star_masses = imf.sample(self.target_mass)
         print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
         
-        self.stars.pars = self.isoc.get_stellar_pars_at(star_masses, self.logage, self.Z )
+        self.stars.pars = isoc.get_stellar_pars_at(star_masses, self.logage, self.Z )
         self.nstars=self.stars.pars.shape[0]
         live = np.isfinite(self.stars.pars['MASSACT'])
         self.total_mass_current = (self.stars.pars['MASSACT'][live]).sum()   
 
-    def observe_stars(self,filterlist = None):
+    def observe_stars(self, filterlist=None, speclib=None,
+                      attenuator=None, intspec=True):
         """Obtain the spectra of each star using the stellar spectral
         library and convolve with the supplied list of filter
-        transmission curves to obtain and populate the SED field of
-        self.
+        transmission curves to obtain and populate the ``stars.sed``
+        attribute of the cluster.
+
+        :param filterlist: (default: None)
+            A list of sedpy filter objects.  If ``None`` then the
+            ``filterlist`` attribute is used.
+            
+        :param speclib: (default: None)
+            The spectral library object to use for generating stellar
+            spectra given their parameters. If ``None`` use the
+            ``speclib`` attribute.
+
+        :param attenuator: (default: None)
+            The sedpy attenuator object to use for attenuating the stars.  It is passed 
         """
-        if filterlist is not None:
-            self.filterlist = filterlist
-        self.nfilters = len(self.filterlist)
-        self.band_names = observate.filter_dict(self.filterlist) 
+        if filterlist is None:
+            filterlist = self.filterlist
+        if speclib is None:
+            speclib = self.speclib
+        self.nfilters = len(filterlist)
+        self.band_names = observate.filter_dict(filterlist) 
 
         live = (np.where(np.isfinite(self.stars.pars['MASSACT'])))[0]
         self.ndead = self.nstars - live.shape[0]
         self.stars.seds = np.zeros([self.nstars,self.nfilters])
         self.stars.lbol = np.zeros(self.nstars)
-        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = self.speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator = None, intspec = True )
+        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator = attenuator, intspec = True )
 
-    def plot_CMD(self,iname,jname,kname, outfilename = None):
+    def plot_CMD(self,iname, jname, kname, outfilename=None):
         """Plot the color-magnitude diagram of the stars, given the
         filter nicknames for the desired color and magnitude.
         """
