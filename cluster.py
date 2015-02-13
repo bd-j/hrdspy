@@ -75,7 +75,14 @@ class Cluster(object):
             ``speclib`` attribute.
 
         :param attenuator: (default: None)
-            The sedpy attenuator object to use for attenuating the stars.  It is passed 
+            The sedpy attenuator object to use for attenuating the
+            stars.  It is passed to the generateSEDs method of the
+            speclib object.
+
+        :param intspec: (default: True)
+            Switch to store the integrated stellar spectrum of the
+            cluster. Passed to the generateSEDs method of the speclib
+            object.
         """
         if filterlist is None:
             filterlist = self.filterlist
