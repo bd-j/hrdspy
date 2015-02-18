@@ -32,7 +32,7 @@ class Cluster(object):
         self.stars = starmodel.SpecLibrary()
         #self.stars.wavelength = self.speclib.wavelength
         
-    def generate_stars(self, imf=None, isoc=None):
+    def generate_stars(self, imf=None, isoc=None, star_masses=None):
         """Generate a population of stars from the IMF given a preset
         total mass for the cluster.  Then, determine the parameters of
         these stars from interpolation of the isochrone values given
@@ -40,16 +40,23 @@ class Cluster(object):
         structured array of shape (nstar) where each field of the
         structure is a stellar parameter.
 
-        :param imf:
-
-        :param isoc:
-        
+        :param imf: (default: None)
+            An imf object having the method ``sample()``.
+            
+        :param isoc: (default: None)
+            An isochrone object having the method
+            ``get_stellar_pars_at()``.
+            
+        :param star_masses: (default: None)
+            An array of stellar masses comprising the cluster.  If
+            None sample from the provided imf.
         """
         if imf is None:
             imf = self.imf
         if isoc is None:
             isoc = self.isoc
-        star_masses = imf.sample(self.target_mass)
+        if star_masses is None:
+            star_masses = imf.sample(self.target_mass)
         print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
         

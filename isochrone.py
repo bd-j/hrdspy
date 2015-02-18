@@ -96,7 +96,8 @@ class Padova2007(ModelLibrary):
         for i,p in enumerate(parnames):
             pars[:,i] = (self.pars[p][i1]*weights).sum(axis = 1)
             #pars[:,i] = (self.pars[p][i1]*weights1 + self.pars[p][i2]*weights2)
-            if p != 'MASSIN' : pars[dead,i] = float('nan')
+            if p != 'MASSIN' :
+                pars[dead,i] = float('nan')
                 
         stars_out = self.structure_array(pars,parnames)
         if silent is False:
