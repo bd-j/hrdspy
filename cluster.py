@@ -102,8 +102,22 @@ class Cluster(object):
         self.ndead = self.nstars - live.shape[0]
         self.stars.seds = np.zeros([self.nstars,self.nfilters])
         self.stars.lbol = np.zeros(self.nstars)
-        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator = attenuator, intspec = True )
+        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator=attenuator, intspec=intspec)
 
+    def make_integrated_spectrum(self):
+        """This method should implement a faster integrated spectrum
+        generator.  Basically, it should accumulate weights for each
+        mass point in the isochrone, instead of looping over all
+        stellar masses in the cluster, and calculate a spectrum for each
+        isochrone mass, then report the weighted sum of these spectra.
+
+        An even faster algorithm would additionally bin the isochrone
+        masses (below some `main sequence stochastic limit`) with bins
+        small enough that the spectra should not be changing
+        significantly across the bin.
+        """
+        pass
+        
     def plot_CMD(self,iname, jname, kname, outfilename=None):
         """Plot the color-magnitude diagram of the stars, given the
         filter nicknames for the desired color and magnitude.
