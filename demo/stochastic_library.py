@@ -30,7 +30,7 @@ hdrtxt = ("A list of [header, wave, spectrum, stellar_masses] for {0} realizatio
 nametemplate = "stochastic_lib/salp_stoch{0}_logM{1:3.1f}_logt{2:4.2f}.p"
 
 
-def make_realizations(mtot, logage, nreal=10, mlim=1.0, Z=0.0190):
+def make_realizations(mtot, logage, nreal=10, mlim=1.0, Z=0.0190, nkeep=None):
     """Draw stochastic realizations of an SSP with a given mass and
     age.
 
@@ -72,13 +72,10 @@ def make_realizations(mtot, logage, nreal=10, mlim=1.0, Z=0.0190):
 if __name__=="__main__":
     
     #masses = 10**(4.5 + np.arange(3) *0.5)
-    masses = [10**5.0]
+    masses = [10**5.5]
     nreal, Z, mlim = 100, 0.0190, 2.0
-    ages = 7.5 + np.arange(10) * 0.25
-    #ages = [9.5, 9.75]
+    ages = 7.5 + np.arange(7) * 0.25
+    #ages = [9.25, 9.5, 9.75]
     for mtot in masses:
         for logage in ages:
             make_realizations(mtot, logage, nreal=nreal, Z=Z, mlim=mlim)
-
-  
-    
