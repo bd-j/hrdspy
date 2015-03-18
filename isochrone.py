@@ -87,10 +87,8 @@ class Padova2007(Isochrone):
         corresponding isochrone data, and use it to produce a
         structured array of stellar parameters
         """
-        if type(Z) is float :
-            Z = '%6.4f' % Z
         zval = float(Z)
-        filename = glob.glob(self.isocdir+'/isoc*'+Z+'*.dat')
+        filename = glob.glob(self.isocdir+'/isoc_z{0:6.4f}.dat'.format(zval))
         age, mini, mact, logl, logt, logg, composition, phase = np.loadtxt(filename[0],
                                                                            usecols=(0,1,2,3,4,5,6,7),
                                                                            unpack=True)
@@ -133,6 +131,8 @@ class Geneva2013(Isochrone):
         for Z in self.Z_list:
             for t in self.logage_list:
                 pars = self.load_one_isoc(Z, t)
+                if pars is None:
+                    continue
                 if self.pars is None:
                     self.pars = pars
                 else:
@@ -149,6 +149,9 @@ class Geneva2013(Isochrone):
 
         fn = 'Isochr_Z{0:4.3f}_Vini{1:3.2f}_t{2:06.3f}.dat'.format(Z, self.Vini, logage)
         filename = glob.glob(self.isocdir + fn)
+        if len(filename) == 0:
+            print('Could not find {0}'.format(self.isocdir + fn))
+            return None
         mini, zini, mact, logl, logt, logt_nc, mbol, rpol, logg = np.loadtxt(filename[0], skiprows=1,
                                                                     usecols=(0,1,3,4,5,6,7,12,14),
                                                                     unpack=True)
