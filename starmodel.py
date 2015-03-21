@@ -10,7 +10,7 @@ class BaSeL3(SpecLibrary):
     """Class to handle BaSeL 3.1 stellar spectral library
     """
     hrdspydir, f = os.path.split(__file__)
-    specdir = hrdspydir + '/data/spectra/'
+    specdir = hrdspydir + '/data/spectra/basel/'
     flux_unit_mod = 'erg/s/AA'
     flux_unit_out = 'erg/s/AA/cm^2 at a distance of 10pc'
     output_to_model_units = 10**( np.log10(4.0*np.pi)+2*np.log10(pc*10) )
@@ -83,3 +83,8 @@ class BaSeL3(SpecLibrary):
             self.spectra = np.vstack([self.spectra, spec])
                         
         
+
+class SmithHotStars(SpecLibrary):
+    
+    def __init__(self):
+        pass

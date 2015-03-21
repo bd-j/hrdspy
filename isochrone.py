@@ -11,7 +11,7 @@ class Isochrone(ModelLibrary):
         pass
     
     def get_stellar_pars_at(self, initial_masses, logage, Z=0.019,
-                            silent = False):
+                            silent=False):
         """Given an array of initial masses, an age (in log yrs) and a
         metallicity, interpolate the isochrone stellar parameter
         values to these masses, age, and metallicity.  Interpolation
@@ -23,7 +23,7 @@ class Isochrone(ModelLibrary):
         this_age = self.logage_list[self.nearest_index(self.logage_list, logage)]
         this_Z = self.Z_list[self.nearest_index(self.Z_list, Z)]
         if silent is False:
-            print("Padova2007: looking for stars with "
+            print("isochrone: looking for stars with "
                   "log(age) = {0} and Z = {1}".format(this_age, this_Z))
         #print(this_age, this_age.shape, this_Z, this_Z.shape)
         inds = np.where(np.logical_and(self.pars['LOGAGE'] == this_age,
@@ -48,7 +48,7 @@ class Isochrone(ModelLibrary):
                 
         stars_out = self.structure_array(pars,parnames)
         if silent is False:
-            print("Isochrone: {0} of {1} initial stars have "
+            print("isochrone: {0} of {1} initial stars have "
                   "died".format(dead.shape[0],initial_masses.shape[0]) )
     
         return stars_out
@@ -58,7 +58,7 @@ class Isochrone(ModelLibrary):
         Returns None if the file could not be found
         """
         if not os.path.exists(fn):
-            print('Could not find {0}'.format(self.isocdir + fn))
+            print('Could not find {0}'.format(fn))
             return None
         with open(fn, 'r') as f:
             while(True):

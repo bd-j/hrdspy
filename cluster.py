@@ -32,7 +32,7 @@ class Cluster(object):
         self.stars = starmodel.SpecLibrary()
         #self.stars.wavelength = self.speclib.wavelength
         
-    def generate_stars(self, imf=None, isoc=None, star_masses=None):
+    def generate_stars(self, imf=None, isoc=None, star_masses=None, **kwargs):
         """Generate a population of stars from the IMF given a preset
         total mass for the cluster.  Then, determine the parameters of
         these stars from interpolation of the isochrone values given
@@ -60,7 +60,7 @@ class Cluster(object):
         print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
         
-        self.stars.pars = isoc.get_stellar_pars_at(star_masses, self.logage, self.Z )
+        self.stars.pars = isoc.get_stellar_pars_at(star_masses, self.logage, self.Z, **kwargs )
         self.nstars=self.stars.pars.shape[0]
         live = np.isfinite(self.stars.pars['MASSACT'])
         self.total_mass_current = (self.stars.pars['MASSACT'][live]).sum()   

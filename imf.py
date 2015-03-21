@@ -127,7 +127,8 @@ class UserIMF(IMF):
 
 
 class CMF(IMF):
-
+    """Cluster mass function.
+    """
     def __init__(self):
         self.total_mass = 1.0 #set the total mass to be 1 M_sun
         self.mlo = np.array([1e2])
