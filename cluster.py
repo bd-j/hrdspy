@@ -57,16 +57,14 @@ class Cluster(object):
             isoc = self.isoc
         if star_masses is None:
             star_masses = imf.sample(self.target_mass)
-        print(type(star_masses))
+        #print(type(star_masses))
         self.total_mass_formed = star_masses.sum()
-        
         self.stars.pars = isoc.get_stellar_pars_at(star_masses, self.logage, self.Z, **kwargs )
         self.nstars=self.stars.pars.shape[0]
         live = np.isfinite(self.stars.pars['MASSACT'])
         self.total_mass_current = (self.stars.pars['MASSACT'][live]).sum()   
 
-    def observe_stars(self, filterlist=None, speclib=None,
-                      attenuator=None, intspec=True):
+    def observe_stars(self, filterlist=None, speclib=None, **kwargs):
         """Obtain the spectra of each star using the stellar spectral
         library and convolve with the supplied list of filter
         transmission curves to obtain and populate the ``stars.sed``
@@ -86,10 +84,6 @@ class Cluster(object):
             stars.  It is passed to the generateSEDs method of the
             speclib object.
 
-        :param intspec: (default: True)
-            Switch to store the integrated stellar spectrum of the
-            cluster. Passed to the generateSEDs method of the speclib
-            object.
         """
         if filterlist is None:
             filterlist = self.filterlist
@@ -102,7 +96,7 @@ class Cluster(object):
         self.ndead = self.nstars - live.shape[0]
         self.stars.seds = np.zeros([self.nstars,self.nfilters])
         self.stars.lbol = np.zeros(self.nstars)
-        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, attenuator=attenuator, intspec=intspec)
+        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, intspec=True, **kwargs)
 
     def make_integrated_spectrum(self):
         """This method should implement a faster integrated spectrum

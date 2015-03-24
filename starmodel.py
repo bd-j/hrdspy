@@ -21,11 +21,13 @@ class BaSeL3(SpecLibrary):
         self.triangle_dirtiness = 2
 
     def spectra_from_pars(self, parstruct, **extras):
-        return self.generate_spectrum(parstruct['LOGL'],
-                                      parstruct['LOGT'],
-                                      parstruct['LOGG'],
-                                      parstruct['Z'], **extras)
-
+        """Given a structured array of stellar parameters, calculate
+        the corresponding spectra.
+        """
+        
+        return self.generate_spectrum(parstruct['LOGL'], parstruct['LOGT'],
+                                      parstruct['LOGG'], parstruct['Z'], **extras)
+            
     def generate_spectrum(self, logl, logt, logg, Z, **extras):
         logz = np.log10(Z/0.0190)
         spec = self.interpolate_to_pars(np.array([logt,logg,logz]).T,
@@ -70,8 +72,8 @@ class BaSeL3(SpecLibrary):
                 
         wave, spec, pars = self.read_model_from_fitsbinary(filename[0],
                                                            parnames,
-                                                           wavename = 'WAVELENGTH')
-        zz = np.zeros(pars.shape[0],dtype= np.dtype([('Z','<f8')]))
+                                                           wavename='WAVELENGTH')
+        zz = np.zeros(pars.shape[0], dtype=np.dtype([('Z','<f8')]))
         zz['Z'] = inZ
         pars = self.join_struct_arrays([pars,zz])
         if self.pars is None:
@@ -82,9 +84,44 @@ class BaSeL3(SpecLibrary):
             self.pars = np.hstack([self.pars, pars])
             self.spectra = np.vstack([self.spectra, spec])
                         
-        
 
-class SmithHotStars(SpecLibrary):
+class FSPS(SpecLibrary):
     
+    output_to_model_units = 10**( np.log10(4.0*np.pi)+2*np.log10(pc*10) )
+
+    def __init__(self, sps):
+        self.wavelength = sps.wavelengths.copy()
+
+    def spectra_from_pars(self, parstruct, sps=None, **extras):
+        
+        cols = ['MASSACT', 'LOGT', 'LOGL', 'LOGG']
+        spec = np.empty([ len(parstruct), len(sps.wavelengths)])
+        for i,row in enumerate(parstruct):
+            m, t, l, g = [row[col] for col in cols]
+            l = 10**l
+            zmet = np.abs(sps.zlegend - row['Z']).argmin() + 1
+            spec[i,:]= sps.get_starspec(m, t, l, g, 0.0, 0.0, zmet=zmet, peraa=True)
+                
+        return spec * lsun / self.output_to_model_units 
+
+            
+class TLUSTY(SpecLibrary):
+
     def __init__(self):
         pass
+
+    def spectra_from_pars(self, parstruct, **extras):
+        return  None
+ 
+class Smith2002(SpecLibrary):
+    
+    def __init__(self, lumclass='dwarfs'):
+        self.pars = None
+        self.spectra = None
+        self.triangle_dirtiness = 2
+        self.type = lumclass
+        
+    def spectra_from_pars(self, parstruct, **extras):
+        return  None
+    
+ 
