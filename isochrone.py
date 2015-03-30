@@ -91,6 +91,7 @@ class Padova2007(Isochrone):
         """
         self.max_mass = []
         self.logage_list = []
+        self.pars = None
         
         for Z in self.Z_list:
             pars = self.load_one_isoc(Z)
@@ -148,6 +149,7 @@ class Geneva2013(Isochrone):
         """Load all isochrones (Z and age).
         """
         self.max_mass = []
+        self.pars = None
         
         for Z in self.Z_list:
             for t in self.logage_list:
@@ -179,13 +181,58 @@ class Geneva2013(Isochrone):
         return pars
 
 class MIST(Isochrone):
+    hrdspydir, f = os.path.split(__file__)
+    isocdir = hrdspydir + '/data/isochrones/mist/'
 
-    def __init__(self):
+    def __init__(self, Vini=0.0, OV=None):
         """The MIST isochrones.
+
+        :param Vini:
+            Initial rotation speed, in fraction of V_breakup.  Valid
+            values are 0.00 and 0.40
+
+        :param OV:
+            Core overshooting.  Valid values are 0.008 and 0.0030.
         """
-        self.Zlist = None
-        self.Zlegend = None
+        if OV is not None:
+            assert Vini == 0.0
+            
+        self.pars = None
+        flist = glob.glob(self.isocdir+'isoc*.dat')
+        if len(flist) is 0 :
+            raise NameError('nothing returned for ls ',isocdir,'isoc*.dat')
+        self.Z_legend = ['0.002']
+        self.Z_list = np.array([0.002])
         self.Vini = Vini
+        self.OV = OV
+
+    def load_all_isoc(self):
+        self.pars = None
+        self.pars = self.load_one_isoc()
+        self.logage_list = np.sort(np.unique(self.pars['LOGAGE']))
+        
+    def load_one_isoc(self): 
+        """Read the isochrone data, and use it to produce a
+        structured array of stellar parameters
+        """
+        # log(age)    Mini       Mact  logl  logt  logg  Composition  Phase
+
+        zval = float(self.Z_list[0])
+        fn  = '{0}isoc_MIST_v0.20_feh_m0.8_afe_p0.0_vvcrit{1:3.1f}'.format(self.isocdir, self.Vini)
+        if self.OV is not None:
+            fn += '_fov{0:4.3f}.dat'.format(self.OV)
+        else:
+            fn += '.dat'
+            
+        data = self.read_isoc(fn)
+        zz = np.zeros_like(data['Mini']) + zval
+        pars = np.vstack([data['log(age)'], data['Mini'], data['logl'],
+                          data['logt'], data['logg'], zz, data['Phase'],
+                          data['Mact'], data['Composition']])
+        pars =  self.structure_array(pars.T, ['LOGAGE','MASSIN','LOGL',
+                                              'LOGT','LOGG','Z','PHASE','MASSACT','COMP'])
+        return pars
+
 
 class ParsecOV(Padova2007):
     """Parsec overshooting isochrones.

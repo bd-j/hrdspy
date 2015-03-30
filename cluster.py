@@ -109,6 +109,10 @@ class Cluster(object):
         masses (below some `main sequence stochastic limit`) with bins
         small enough that the spectra should not be changing
         significantly across the bin.
+
+        An even *faster* algorithm would determine the spectral
+        library weights for each isochrone mass point and bin in those
+        before summing the weighted spectra.
         """
         pass
         
