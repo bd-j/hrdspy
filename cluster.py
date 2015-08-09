@@ -64,7 +64,8 @@ class Cluster(object):
         live = np.isfinite(self.stars.pars['MASSACT'])
         self.total_mass_current = (self.stars.pars['MASSACT'][live]).sum()   
 
-    def observe_stars(self, filterlist=None, speclib=None, **kwargs):
+    def observe_stars(self, filterlist=None, speclib=None, intspec=True,
+                      **kwargs):
         """Obtain the spectra of each star using the stellar spectral
         library and convolve with the supplied list of filter
         transmission curves to obtain and populate the ``stars.sed``
@@ -96,7 +97,7 @@ class Cluster(object):
         self.ndead = self.nstars - live.shape[0]
         self.stars.seds = np.zeros([self.nstars,self.nfilters])
         self.stars.lbol = np.zeros(self.nstars)
-        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, intspec=True, **kwargs)
+        self.stars.seds[live,:], self.stars.lbol[live], self.integrated_spectrum = speclib.generateSEDs(self.stars.pars[live], filterlist, intspec=intspec, **kwargs)
 
     def make_integrated_spectrum(self):
         """This method should implement a faster integrated spectrum

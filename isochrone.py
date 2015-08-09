@@ -260,7 +260,6 @@ class ParsecOV(Padova2007):
         corresponding isochrone data, and use it to produce a
         structured array of stellar parameters.
         """
-        
         #Z	log(age/yr)	M_ini   	M_act	logL/Lo	logTe	logG	mbol    F200LP1 F218W1  F225W1  F275W1  F336W1  F350LP1 F390W1  F438W1  F475W1  F555W1  F600LP1 F606W1  F625W1  F775W1  F814W1  F850LP1	C/O	M_hec	period	pmode	logMdot	slope	int_IMF	stage
         
         Z = float(Z)
