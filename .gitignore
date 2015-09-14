@@ -1,5 +1,5 @@
-data/spectra/*fits
-data/isochrones/*
+hrdspy/data/spectra/basel/*fits
+hrdspy/data/isochrones/*
 *~
 *.pyc
 junk*
