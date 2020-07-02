@@ -4,7 +4,7 @@
 import matplotlib.pyplot as pl
 import time, pickle
 import numpy as np
-import starmodel, isochrone, cluster, imf
+from hrdspy import starmodel, isochrone, cluster, imf
 from sedpy import observate, attenuation
 
 # choose a few filters and load them
@@ -72,10 +72,11 @@ def make_realizations(mtot, logage, nreal=10, mlim=1.0, Z=0.0190, nkeep=None):
 if __name__=="__main__":
     
     #masses = 10**(4.5 + np.arange(3) *0.5)
-    masses = [10**5.5]
-    nreal, Z, mlim = 100, 0.0190, 2.0
-    ages = 7.5 + np.arange(7) * 0.25
+    masses = [10**5.0]
+    nreal, Z, mlim = 10, 0.0190, 1.0
+    #ages = 7.5 + np.arange(7) * 0.25
     #ages = [9.25, 9.5, 9.75]
+    ages = [10.0]
     for mtot in masses:
         for logage in ages:
             make_realizations(mtot, logage, nreal=nreal, Z=Z, mlim=mlim)

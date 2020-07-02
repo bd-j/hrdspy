@@ -1,7 +1,7 @@
 import glob, pickle, os
 import numpy as np
 import matplotlib.pyplot as pl
-import fsps, cluster
+import fsps
 import astropy.constants as const
 
 sps = fsps.StellarPopulation(zcontinuous=1)
@@ -18,16 +18,18 @@ nametemplate = "stochastic_lib/salp_stoch{0}_logM{1:3.1f}_logt{2:4.2f}.p"
 
 
 ns = 5
-masses = [4.0, 4.5, 5.0, 5.5]
-ages = np.arange(3)*0.25 + 7.5
+#masses = [4.0, 4.5, 5.0, 5.5]
+#ages = np.arange(3)*0.25 + 7.5
+masses = [5.0]
+ages = [10.0]
 wmin, wmax = 1.5e3, 2e4
-
-sample = np.random.uniform(0,100, ns).astype(int)
+nsample = 10
+sample = np.random.uniform(0,nsample, ns).astype(int)
 for age in ages:
     w, fspec = sps.get_spectrum(tage=10**age/1e9, peraa=True)
     fspec *= w
     for mass in masses:
-        filename = nametemplate.format(100, mass, age)
+        filename = nametemplate.format(nsample, mass, age)
         if not os.path.exists(filename):
             continue
         with open(filename, 'rb') as f:
@@ -58,4 +60,4 @@ for age in ages:
         ax.set_xscale('log')
         ax.set_yscale('log')
         fig.savefig(filename.replace('.p','.png'))
-        pl.close(fig)
+        #pl.close(fig)
